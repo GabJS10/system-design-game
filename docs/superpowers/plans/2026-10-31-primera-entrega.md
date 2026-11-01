@@ -188,8 +188,8 @@ Contenido de Pastebin, tomado de la página del ejercicio 1 (`https://app.notion
 - Decisiones: generación de enlaces (válidas: hash MD5 y Base62, contador global con Base62; inválida: Base64 sin escapar), longitud del enlace (válidas: 6 y 7 caracteres, porque superan los 360 millones de enlaces; inválidas: 4 y 20), dónde guardar el contenido.
 - `growthNote`: el diseño escalado de la sección 5 de la página, como texto para el final.
 
-- [ ] **Step 1: Escribir las pruebas fallidas de `parseEstimate` y `judgeEstimate`.** Casos: `"1.000"` → 1000, `"12,7"` → 12,7, `"1.27"` → 1,27, `""`, `"abc"`, `"0"`, `"-3"` → `null`; 40 frente a 40 es `bien`, 100 frente a 40 es `bien`, 300 frente a 40 es `cerca`, 4.000 frente a 40 es `lejos`.
-- [ ] **Step 2: Escribir las pruebas fallidas de calibración en `pastebin.test.ts`.** Para cada variante:
+- [x] **Step 1: Escribir las pruebas fallidas de `parseEstimate` y `judgeEstimate`.** Casos: `"1.000"` → 1000, `"12,7"` → 12,7, `"1.27"` → 1,27, `""`, `"abc"`, `"0"`, `"-3"` → `null`; 40 frente a 40 es `bien`, 100 frente a 40 es `bien`, 300 frente a 40 es `cerca`, 4.000 frente a 40 es `lejos`.
+- [x] **Step 2: Escribir las pruebas fallidas de calibración en `pastebin.test.ts`.** Para cada variante:
   - La referencia consigue 3 estrellas.
   - La referencia con un `nosql` de 3 instancias en lugar de `sql` y su réplica consigue 3 estrellas.
   - Eliminar cualquier nodo de la referencia, salvo `client`, pierde al menos una estrella. Esto demuestra que es el diseño más sencillo.
@@ -197,10 +197,10 @@ Contenido de Pastebin, tomado de la página del ejercicio 1 (`https://app.notion
   - La referencia sin `cache` ni `cdn` pierde rendimiento en `viral`.
   - La referencia con 6 shards (`instances: 6`) y réplicas de más pierde coste.
   - La referencia con `visitCounter` falla `estadisticas` y `simulate` muestra más escrituras.
-- [ ] **Step 3: Ejecutar `npx vitest run src/engine src/missions`.** Esperado: FAIL.
-- [ ] **Step 4: Implementar `estimate.ts`, `mission.ts`, `score.ts` y `pastebin.ts`.** Ajustar capacidades, costes y presupuestos en `components.ts` y `pastebin.ts` hasta cumplir las pruebas. Los valores son ficticios y plausibles; ninguno se fija en la prueba, salvo los escenarios y objetivos.
-- [ ] **Step 5: Ejecutar `npx vitest run`.** Esperado: PASS.
-- [ ] **Step 6: Commit** `feat: misión de Pastebin y puntuación por estrellas`.
+- [x] **Step 3: Ejecutar `npx vitest run src/engine src/missions`.** Esperado: FAIL.
+- [x] **Step 4: Implementar `estimate.ts`, `mission.ts`, `score.ts` y `pastebin.ts`.** Ajustar capacidades, costes y presupuestos en `components.ts` y `pastebin.ts` hasta cumplir las pruebas. Los valores son ficticios y plausibles; ninguno se fija en la prueba, salvo los escenarios y objetivos.
+- [x] **Step 5: Ejecutar `npx vitest run`.** Esperado: PASS.
+- [x] **Step 6: Commit** `feat: misión de Pastebin y puntuación por estrellas`.
 
 ### Task 4: Comparación con la referencia
 
