@@ -87,8 +87,8 @@ export default function MapScreen() {
     const result = importSave(await file.text())
     if ('error' in result) return setNotice(result.error)
     if (!window.confirm('Importar sustituirá tu progreso actual por el del archivo. ¿Continuar?')) return
-    update(() => result.save)
-    setNotice('Progreso importado.')
+    const saved = update(() => result.save)
+    setNotice(saved ? (result.warning ?? 'Progreso importado.') : 'Progreso importado solo en esta sesión: no se pudo guardar en este navegador.')
   }
 
   return (

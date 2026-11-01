@@ -1,20 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { loadSave, writeSave, type Save } from '../save'
+import { loadSave, openStorage, writeSave, type Save } from '../save'
 
-type Game = { save: Save; update: (fn: (s: Save) => Save) => void; warning: string | null }
+type Game = { save: Save; update: (fn: (s: Save) => Save) => boolean; warning: string | null }
 
 const GameContext = createContext<Game | null>(null)
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [initial] = useState(() => loadSave(localStorage))
+  const [storage] = useState(() => openStorage())
+  const [initial] = useState(() => loadSave(storage))
   const [save, setSave] = useState(initial.save)
   const current = useRef(initial.save)
 
   const update = useCallback((fn: (s: Save) => Save) => {
     current.current = fn(current.current)
     setSave(current.current)
-    writeSave(localStorage, current.current)
-  }, [])
+    return writeSave(storage, current.current)
+  }, [storage])
 
   return <GameContext value={{ save, update, warning: initial.warning }}>{children}</GameContext>
 }

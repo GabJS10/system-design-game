@@ -4,6 +4,7 @@ import type { Mission, Variant } from './engine/mission'
 import { nextReviewDays } from './engine/review'
 import type { AttemptFacts } from './engine/score'
 import type { Design } from './engine/types'
+import { MISSIONS } from './missions'
 
 export type Phase = 'informe' | 'estimacion' | 'diseno' | 'decisiones' | 'comparacion'
 // Antes de la fase de estimación aún no hay veredictos; AttemptFacts completo solo existe al compararlos.
@@ -70,6 +71,15 @@ function isSave(v: unknown): v is Save {
     && isArr(v.completedLessons, isStr) && isObj(v.lessonState)
 }
 
+// Forma correcta no basta: el intento en curso debe poder continuarse con las misiones de hoy.
+function canResume(a: Attempt): boolean {
+  const mission = MISSIONS.find((m) => m.id === a.missionId)
+  return Boolean(mission?.variants.some((v) => v.id === a.variantId))
+    && !Number.isNaN(Date.parse(a.startedAt))
+    && a.design.nodes.some((n) => n.kind === 'client')
+    && (a.simulatedRevision === null || a.simulatedRevision <= a.designRevision)
+}
+
 function parseSave(text: string): Save | null {
   try {
     const v: unknown = JSON.parse(text)
@@ -94,8 +104,16 @@ export function loadSave(storage: Storage): { save: Save; warning: string | null
   const raw = read.raw
   if (raw === null) return { save: emptySave(), warning: null }
   const save = parseSave(raw)
-  if (save) return { save, warning: null }
+  if (save && (!save.current || canResume(save.current))) return { save, warning: null }
   const copied = backup(storage, raw)
+  if (save) {
+    return {
+      save: { ...save, current: null },
+      warning: copied
+        ? 'El intento en curso ya no se puede continuar y se descartó. Tu demás progreso sigue aquí y se conservó una copia.'
+        : 'El intento en curso ya no se puede continuar y se descartó, y no se pudo conservar una copia. Tu demás progreso sigue aquí.',
+    }
+  }
   return {
     save: emptySave(),
     warning: copied
@@ -104,22 +122,34 @@ export function loadSave(storage: Storage): { save: Save; warning: string | null
   }
 }
 
-export function writeSave(storage: Storage, save: Save): void {
+/** Devuelve false si el progreso no quedó guardado. */
+export function writeSave(storage: Storage, save: Save): boolean {
   const read = readRaw(storage)
-  if (!read.ok) return // puede haber progreso que no vemos: no lo pisamos
+  if (!read.ok) return false // puede haber progreso que no vemos: no lo pisamos
   const raw = read.raw
   // Datos ilegibles en la clave principal: copiarlos antes de pisarlos; si no se puede, no se escribe.
-  if (raw !== null && !parseSave(raw) && !backup(storage, raw)) return
-  try { storage.setItem(KEY, JSON.stringify(save)) } catch { /* cuota o almacenamiento bloqueado */ }
+  if (raw !== null && !parseSave(raw) && !backup(storage, raw)) return false
+  try { storage.setItem(KEY, JSON.stringify(save)); return true } catch { return false /* cuota o almacenamiento bloqueado */ }
+}
+
+/** Solo tocar `localStorage` ya puede lanzar; entonces toda operación falla como si estuviera bloqueado. */
+export function openStorage(access: () => Storage = () => localStorage): Storage {
+  try {
+    return access()
+  } catch {
+    return new Proxy({} as Storage, { get() { throw new Error('Almacenamiento bloqueado') } })
+  }
 }
 
 export function exportSave(save: Save): string {
   return JSON.stringify(save, null, 2)
 }
 
-export function importSave(text: string): { save: Save } | { error: string } {
+export function importSave(text: string): { save: Save; warning?: string } | { error: string } {
   const save = parseSave(text)
-  return save ? { save } : { error: 'El archivo no es un progreso válido de este juego.' }
+  if (!save) return { error: 'El archivo no es un progreso válido de este juego.' }
+  if (!save.current || canResume(save.current)) return { save }
+  return { save: { ...save, current: null }, warning: 'Progreso importado, sin el intento en curso, que ya no se puede continuar.' }
 }
 
 export function dueReviews(save: Save, now: Date): string[] {

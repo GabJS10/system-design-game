@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Mission } from './engine/mission'
-import { dueReviews, exportSave, importSave, loadSave, pickVariant, writeSave, type Attempt, type Save } from './save'
+import { dueReviews, exportSave, importSave, loadSave, openStorage, pickVariant, writeSave, type Attempt, type Save } from './save'
 
 function fakeStorage(init: Record<string, string> = {}, failSet = false, failGet = false): Storage {
   const m = new Map(Object.entries(init))
@@ -18,7 +18,7 @@ const empty: Save = { version: 1, attempts: [], current: null, completedLessons:
 
 function attempt(over: Partial<Attempt> = {}): Attempt {
   return {
-    missionId: 'pastebin', variantId: 'a', phase: 'diseno', startedAt: '2026-01-01T00:00:00.000Z',
+    missionId: 'pastebin', variantId: 'base', phase: 'diseno', startedAt: '2026-01-01T00:00:00.000Z',
     facts: { askedQuestionIds: ['q1'], scopeChoices: { s1: true }, estimates: { readRps: 'bien', writeRps: 'cerca', storageGbPerMonth: 'lejos' } },
     design: { nodes: [{ id: 'c', kind: 'client', instances: 1 }, { id: 'a', kind: 'api', instances: 2, visitCounter: true }], edges: [{ from: 'c', to: 'a' }] },
     designRevision: 3, simulatedRevision: null, decisions: { d1: 'x' }, justifications: { d1: 'porque' },
@@ -86,6 +86,74 @@ describe('loadSave y writeSave', () => {
     const vacio: Save = { ...empty, current: attempt({ phase: 'informe', facts: { askedQuestionIds: [], scopeChoices: {}, estimates: {} } }) }
     expect(importSave(exportSave(vacio))).toEqual({ save: vacio })
   })
+  describe('current sin misión posible', () => {
+    const bad: [string, Partial<Attempt>][] = [
+      ['misión inexistente', { missionId: 'nada' }],
+      ['variante inexistente', { variantId: 'nada' }],
+      ['fecha inválida', { startedAt: 'ayer' }],
+      ['diseño sin client', { design: { nodes: [{ id: 'a', kind: 'api', instances: 1 }], edges: [] } }],
+      ['revisión simulada mayor que la del diseño', { simulatedRevision: 4, designRevision: 3 }],
+    ]
+
+    it.each(bad)('%s: descarta current, avisa y conserva copia', (_, over) => {
+      const save: Save = { ...empty, current: attempt(over), completedLessons: ['l1'] }
+      const raw = exportSave(save)
+      const s = fakeStorage({ 'sdw-save': raw })
+      const r = loadSave(s)
+      expect(r.save).toEqual({ ...save, current: null })
+      expect(r.warning).toMatch(/intento/)
+      expect(s.getItem('sdw-save-backup')).toBe(raw)
+    })
+
+    it('avisa si no pudo conservar la copia', () => {
+      const raw = exportSave({ ...empty, current: attempt({ missionId: 'nada' }) })
+      expect(loadSave(fakeStorage({ 'sdw-save': raw }, true)).warning).toMatch(/no se pudo/)
+    })
+
+    it('al importar descarta current y avisa, con el resto intacto', () => {
+      const save: Save = { ...empty, current: attempt({ variantId: 'nada' }), completedLessons: ['l1'] }
+      const result = importSave(exportSave(save))
+      expect(result).toMatchObject({ save: { current: null, completedLessons: ['l1'] }, warning: expect.stringMatching(/intento/) })
+    })
+
+    it('un intento acabado de otra versión no molesta: solo se valida current', () => {
+      const save: Save = { ...empty, attempts: [done('2026-01-02T00:00:00.000Z', { missionId: 'antigua' })] }
+      expect(loadSave(fakeStorage({ 'sdw-save': exportSave(save) }))).toEqual({ save, warning: null })
+    })
+  })
+
+  describe('writeSave informa de si guardó', () => {
+    it('devuelve true al guardar', () => {
+      expect(writeSave(fakeStorage(), empty)).toBe(true)
+    })
+    it('devuelve false si falla setItem', () => {
+      expect(writeSave(fakeStorage({}, true), empty)).toBe(false)
+    })
+    it('devuelve false si falla getItem', () => {
+      expect(writeSave(fakeStorage({}, false, true), empty)).toBe(false)
+    })
+    it('devuelve false si no pudo copiar los datos corruptos', () => {
+      expect(writeSave(fakeStorage({ 'sdw-save': '{x' }, true), empty)).toBe(false)
+    })
+  })
+
+  describe('openStorage', () => {
+    const blocked = () => { throw new Error('SecurityError') }
+
+    it('devuelve el almacenamiento si se puede acceder', () => {
+      const s = fakeStorage()
+      expect(openStorage(() => s)).toBe(s)
+    })
+
+    it('si acceder lanza, se arranca desde cero con aviso y sin guardar', () => {
+      const s = openStorage(blocked)
+      const r = loadSave(s)
+      expect(r.save).toEqual(empty)
+      expect(r.warning).toBeTruthy()
+      expect(writeSave(s, empty)).toBe(false)
+    })
+  })
+
   it('no sobrescribe datos corruptos si no pudo copiarlos', () => {
     const s = fakeStorage({ 'sdw-save': '{x' }, true)
     writeSave(s, empty)
