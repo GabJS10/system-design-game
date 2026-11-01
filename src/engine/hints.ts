@@ -11,12 +11,14 @@ export type ActivityEvent = { type: 'visible' | 'hidden' | 'change'; at: number 
 const STUCK_MS = 180_000
 const STUCK_COUNT = 3
 
-/** Milisegundos con la pestaña visible desde el último 'change'. Los eventos van en orden cronológico. */
-export function activeTimer(events: ActivityEvent[], now: number): number {
-  if (events.length === 0) return 0
+/** Milisegundos con la pestaña visible desde el último 'change'. */
+export function activeTimer(unsorted: ActivityEvent[], now: number): number {
+  if (unsorted.length === 0) return 0
+  const events = [...unsorted].sort((a, b) => a.at - b.at)
   const lastChange = events.findLastIndex((e) => e.type === 'change')
   const start = Math.max(lastChange, 0)
-  let visibleSince: number | null = events[start].at
+  // Sin ningún 'change', una pestaña que empieza oculta no cuenta hasta que se vea.
+  let visibleSince: number | null = events[start].type === 'hidden' ? null : events[start].at
   let total = 0
   for (const { type, at } of events.slice(start + 1)) {
     if (type === 'hidden' && visibleSince !== null) {

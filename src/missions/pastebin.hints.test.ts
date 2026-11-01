@@ -23,7 +23,7 @@ const diagnoseFor = (variant: Variant, design: Design, decisions = VALID_DECISIO
 /** Sin imagen de la solución: ni la pieza ni sus números finales. */
 const FORBIDDEN = [
   'cache', 'cdn', 'redis', 'memcached', 'replica', 'balanceador', 'load balancer', 'worker', 'nosql',
-  'md5', 'base62', 'almacenamiento de objetos', 'por lotes',
+  'md5', 'base62', 'almacenamiento de objetos', 'por lotes', 'reparto de trafico', 'copia viva', 'delante',
 ]
 const plain = (text: string) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 

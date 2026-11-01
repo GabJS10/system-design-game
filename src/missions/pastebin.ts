@@ -340,7 +340,7 @@ export const pastebin: Mission = {
       texts: [
         '¿Cuántas peticiones llegan a tus servidores y hace falta que todas lleguen hasta ellos?',
         'Los servidores de aplicación se saturan con lecturas repetidas, aunque la base ya esté protegida.',
-        'Necesitas absorber las lecturas populares antes de que consuman la capacidad de los servidores.',
+        'Necesitas que las lecturas populares no cuesten trabajo a los servidores cada vez que se piden.',
       ],
       lessonId: 'cache',
     },
@@ -367,7 +367,7 @@ export const pastebin: Mission = {
       texts: [
         '¿Qué pasa con los datos si la base deja de responder?',
         'Toda la información de los pastes depende de una sola copia.',
-        'Necesitas una copia viva de los datos que pueda tomar el relevo cuando la principal falle.',
+        'Necesitas que los datos existan en más de un sitio, de modo que el servicio siga si falla uno.',
       ],
       lessonId: 'latency',
     },
@@ -415,9 +415,9 @@ export const pastebin: Mission = {
     {
       key: 'simulacion:*:balanceo',
       texts: [
-        'Si hay varios servidores iguales, ¿cómo sabe cada petición a cuál ir?',
+        '¿Qué observas en el trabajo que recibe cada servidor cuando hay varios iguales?',
         'Tienes varias copias de los servidores, pero nada reparte el tráfico entre ellas.',
-        'Necesitas un reparto de tráfico delante de los servidores duplicados.',
+        'Necesitas un mecanismo que decida a qué servidor va cada petición.',
       ],
       lessonId: 'latency',
     },

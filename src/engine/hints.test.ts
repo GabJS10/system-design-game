@@ -52,6 +52,15 @@ describe('activeTimer', () => {
     expect(activeTimer(events, 7 * MIN)).toBe(MIN)
   })
 
+  it('sin ningún cambio, una pestaña que empieza oculta no suma hasta volver a verse', () => {
+    expect(activeTimer([at('hidden', 0), at('visible', 10 * MIN)], 12 * MIN)).toBe(2 * MIN)
+  })
+
+  it('ordena los eventos por instante antes de contar', () => {
+    const events = [at('visible', 11 * MIN), at('change', 0), at('hidden', MIN)]
+    expect(activeTimer(events, 12 * MIN)).toBe(2 * MIN)
+  })
+
   it('sin eventos no hay tiempo activo', () => {
     expect(activeTimer([], 5 * MIN)).toBe(0)
   })
