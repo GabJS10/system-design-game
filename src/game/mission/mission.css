@@ -1,0 +1,36 @@
+.mission { max-width: 64rem; margin: 0 auto; padding: 1rem; }
+.mission-header { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+.mission-header h1 { margin: 0; font-size: 1.25rem; flex: 1; }
+.mission .banner { margin: 0.75rem 0; border-radius: 6px; padding: 0.6rem 1rem; }
+.mission-body { display: flex; gap: 1.5rem; align-items: flex-start; }
+.mission-main { flex: 1; min-width: 0; }
+.mission button { padding: 0.4rem 0.9rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+.mission button:hover { border-color: var(--accent); }
+.mission button.primary { background: var(--accent); border-color: var(--accent); color: #fff; margin-top: 1rem; }
+
+.clock { margin: 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+.clock-over { color: var(--due); font-weight: 700; }
+
+.questions { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.questions .question { width: 100%; text-align: left; }
+.question-asked { margin: 0; font-weight: 600; }
+.answer { margin: 0.2rem 0 0; padding: 0.5rem 0.75rem; background: var(--lesson); border-radius: 6px; }
+.scope { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.scope label { display: block; padding: 0.2rem 0; }
+
+.field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; max-width: 22rem; }
+.field input { padding: 0.4rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; font: inherit; }
+.field input[aria-invalid='true'] { border-color: var(--due); }
+.error { margin: 0; color: var(--due); font-weight: 600; }
+
+.verdicts { border-collapse: collapse; width: 100%; background: var(--surface); }
+.verdicts th, .verdicts td { padding: 0.4rem 0.6rem; border: 1px solid var(--border); text-align: left; }
+.requirements { padding-left: 1.2rem; }
+
+.hints { width: 18rem; flex-shrink: 0; padding: 0.75rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.hints h2 { margin: 0 0 0.5rem; font-size: 1rem; }
+.hint-notice { padding: 0.5rem 0.6rem; background: var(--warn-bg); color: var(--warn-text); border-radius: 6px; }
+.hint-cap, .hint-cost { color: var(--muted); font-size: 0.9rem; }
+.hint-levels { padding-left: 1.2rem; }
+.hint-levels h3 { margin: 0.5rem 0 0.2rem; font-size: 0.95rem; }
+.hint-text { padding: 0.5rem 0.6rem; background: var(--lesson); border-radius: 6px; }
