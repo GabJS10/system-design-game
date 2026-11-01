@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { MAP_NODES } from '../content'
 import { diagnose, selectHint } from '../engine/hints'
 import { scenariosFor, type Variant } from '../engine/mission'
 import { scoreDesign } from '../engine/score'
@@ -28,11 +29,17 @@ const FORBIDDEN = [
 const plain = (text: string) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
 describe('pistas de Pastebin', () => {
+  it('las lecciones relacionadas coinciden con los enlaces del mapa', () => {
+    expect(pastebin.relatedLessons).toEqual(MAP_NODES.find((n) => n.id === 'pastebin')?.links)
+    expect(pastebin.relatedLessons).toEqual(['tema-8', 'tema-12', 'cache', 'tema-17'])
+  })
+
+
   it('cada pista tiene tres textos, claves únicas y una lección conocida', () => {
     expect(new Set(pastebin.hints.map((h) => h.key)).size).toBe(pastebin.hints.length)
     for (const hint of pastebin.hints) {
       expect(hint.texts.every((t) => t.trim().length > 0)).toBe(true)
-      if (hint.lessonId) expect(pastebin.relatedLessons).toContain(hint.lessonId)
+      if (hint.lessonId) expect(MAP_NODES.some((n) => n.type === 'leccion' && n.id === hint.lessonId)).toBe(true)
     }
   })
 

@@ -55,6 +55,9 @@ describe('loadSave y writeSave', () => {
     ['veredicto parcial inválido', { ...empty, current: attempt({ facts: { askedQuestionIds: [], scopeChoices: {}, estimates: { readRps: 'bien', writeRps: 'x' } } as never }) }],
     ['estimates no es objeto', { ...empty, current: attempt({ facts: { askedQuestionIds: [], scopeChoices: {}, estimates: null } as never }) }],
     ['veredicto inválido', { ...empty, current: attempt({ facts: { askedQuestionIds: [], scopeChoices: {}, estimates: { readRps: 'x' } } as never }) }],
+    ['estrellas negativas', { ...empty, attempts: [done('2026-01-02T00:00:00.000Z', { result: { stars: -1, finishedAt: '2026-01-02T00:00:00.000Z' } })] }],
+    ['estrellas decimales', { ...empty, attempts: [done('2026-01-02T00:00:00.000Z', { result: { stars: 1.5, finishedAt: '2026-01-02T00:00:00.000Z' } })] }],
+    ['estrellas por encima de 3', { ...empty, attempts: [done('2026-01-02T00:00:00.000Z', { result: { stars: 4, finishedAt: '2026-01-02T00:00:00.000Z' } })] }],
     ['nivel de pista inválido', { ...empty, current: attempt({ hints: [{ key: 'k', level: 9 }] as never }) }],
   ])('forma incorrecta (%s) se trata como corrupto', (_n, bad) => {
     const raw = JSON.stringify(bad)

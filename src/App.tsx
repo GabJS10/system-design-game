@@ -1,4 +1,5 @@
 import { MAP_NODES } from './content'
+import { parseRoute } from './game/route'
 import { GameProvider, useRoute } from './game/store'
 import MapScreen from './game/map/MapScreen'
 
@@ -14,10 +15,8 @@ function UnderConstruction({ id }: { id: string }) {
 }
 
 function Router() {
-  const route = useRoute()
-  const [, kind, id] = route.split('/')
-  if ((kind === 'mision' || kind === 'leccion') && id) return <UnderConstruction id={decodeURIComponent(id)} />
-  return <MapScreen />
+  const route = parseRoute(useRoute())
+  return route.screen === 'mapa' ? <MapScreen /> : <UnderConstruction id={route.id} />
 }
 
 export default function App() {

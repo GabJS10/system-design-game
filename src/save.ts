@@ -62,7 +62,7 @@ function isAttempt(v: unknown): v is Attempt {
     && isRecord(v.decisions, isStr) && isRecord(v.justifications, isStr)
     && isArr(v.hints, (h): h is HintUse => isObj(h) && isStr(h.key) && (h.level === 1 || h.level === 2 || h.level === 3))
     && isArr(v.disputedDifferenceIds, isStr)
-    && (v.result === undefined || (isObj(v.result) && isNum(v.result.stars) && isStr(v.result.finishedAt)))
+    && (v.result === undefined || (isObj(v.result) && Number.isInteger(v.result.stars) && (v.result.stars as number) >= 0 && (v.result.stars as number) <= 3 && isStr(v.result.finishedAt)))
 }
 
 function isSave(v: unknown): v is Save {

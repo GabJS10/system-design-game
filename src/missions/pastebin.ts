@@ -286,7 +286,7 @@ export const pastebin: Mission = {
   ],
   latencyTargetMs: 200,
   maxErrorRate: 0.001,
-  relatedLessons: ['latency', 'cache'],
+  relatedLessons: ['tema-8', 'tema-12', 'cache', 'tema-17'],
   growthNote:
     'Para seguir creciendo, mide, encuentra el cuello de botella y resuélvelo. Añade DNS y CDN delante, varios servidores web como proxy inverso tras los balanceadores y una capa de aplicación con APIs de lectura y de escritura. Las lecturas son lo primero que se escala: caché en memoria para los pastes populares y réplicas de lectura para los fallos de caché. Las escrituras las aguanta un maestro SQL con failover; si no bastara, recurre a federación, sharding, desnormalización o NoSQL. El contenido sigue en el almacenamiento de objetos, y las estadísticas pasan de los logs a un trabajo MapReduce que llena un almacén de datos.',
   hints: [
