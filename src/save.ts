@@ -6,9 +6,11 @@ import type { AttemptFacts } from './engine/score'
 import type { Design } from './engine/types'
 
 export type Phase = 'informe' | 'estimacion' | 'diseno' | 'decisiones' | 'comparacion'
+// Antes de la fase de estimación aún no hay veredictos; AttemptFacts completo solo existe al compararlos.
+export type AttemptProgress = Omit<AttemptFacts, 'estimates'> & { estimates: Partial<AttemptFacts['estimates']> }
 export type Attempt = {
   missionId: string; variantId: string; phase: Phase; startedAt: string
-  facts: AttemptFacts; design: Design; designRevision: number; simulatedRevision: number | null
+  facts: AttemptProgress; design: Design; designRevision: number; simulatedRevision: number | null
   decisions: Record<string, string>; justifications: Record<string, string>; hints: HintUse[]
   disputedDifferenceIds: string[]; result?: { stars: number; finishedAt: string }
 }
@@ -34,15 +36,23 @@ const isRecord = <T>(v: unknown, ok: (x: unknown) => x is T): v is Record<string
 const isBool = (v: unknown): v is boolean => typeof v === 'boolean'
 
 function isDesign(v: unknown): v is Design {
-  return isObj(v)
-    && isArr(v.nodes, (n): n is object => isObj(n) && isStr(n.id) && isStr(n.kind) && Object.hasOwn(PIECES, n.kind)
+  if (!isObj(v)) return false
+  const valid = isArr(v.nodes, (n): n is object => isObj(n) && isStr(n.id) && isStr(n.kind) && Object.hasOwn(PIECES, n.kind)
       && isNum(n.instances) && (n.visitCounter === undefined || isBool(n.visitCounter)))
     && isArr(v.edges, (e): e is object => isObj(e) && isStr(e.from) && isStr(e.to))
+  if (!valid) return false
+  // La simulación asume ids únicos y aristas con extremos existentes.
+  const ids = new Set((v.nodes as Design['nodes']).map((n) => n.id))
+  return ids.size === (v.nodes as Design['nodes']).length
+    && (v.edges as Design['edges']).every((e) => ids.has(e.from) && ids.has(e.to))
 }
 
-function isFacts(v: unknown): v is AttemptFacts {
+function isFacts(v: unknown): v is AttemptProgress {
   return isObj(v) && isArr(v.askedQuestionIds, isStr) && isRecord(v.scopeChoices, isBool)
-    && isObj(v.estimates) && ['readRps', 'writeRps', 'storageGbPerMonth'].every((k) => VERDICTS.includes((v.estimates as Record<string, unknown>)[k]))
+    && isObj(v.estimates) && ['readRps', 'writeRps', 'storageGbPerMonth'].every((k) => {
+      const e = (v.estimates as Record<string, unknown>)[k]
+      return e === undefined || VERDICTS.includes(e)
+    })
 }
 
 function isAttempt(v: unknown): v is Attempt {
@@ -69,8 +79,9 @@ function parseSave(text: string): Save | null {
   }
 }
 
-function readRaw(storage: Storage): string | null {
-  try { return storage.getItem(KEY) } catch { return null }
+// `ok: false` = la lectura falló (distinto de "no hay datos"); entonces no se debe escribir.
+function readRaw(storage: Storage): { ok: true; raw: string | null } | { ok: false } {
+  try { return { ok: true, raw: storage.getItem(KEY) } } catch { return { ok: false } }
 }
 
 function backup(storage: Storage, raw: string): boolean {
@@ -78,7 +89,9 @@ function backup(storage: Storage, raw: string): boolean {
 }
 
 export function loadSave(storage: Storage): { save: Save; warning: string | null } {
-  const raw = readRaw(storage)
+  const read = readRaw(storage)
+  if (!read.ok) return { save: emptySave(), warning: 'No se pudo leer el progreso guardado. Empiezas desde cero y no se guardará nada en esta sesión.' }
+  const raw = read.raw
   if (raw === null) return { save: emptySave(), warning: null }
   const save = parseSave(raw)
   if (save) return { save, warning: null }
@@ -92,7 +105,9 @@ export function loadSave(storage: Storage): { save: Save; warning: string | null
 }
 
 export function writeSave(storage: Storage, save: Save): void {
-  const raw = readRaw(storage)
+  const read = readRaw(storage)
+  if (!read.ok) return // puede haber progreso que no vemos: no lo pisamos
+  const raw = read.raw
   // Datos ilegibles en la clave principal: copiarlos antes de pisarlos; si no se puede, no se escribe.
   if (raw !== null && !parseSave(raw) && !backup(storage, raw)) return
   try { storage.setItem(KEY, JSON.stringify(save)) } catch { /* cuota o almacenamiento bloqueado */ }

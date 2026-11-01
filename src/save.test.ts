@@ -50,6 +50,10 @@ describe('loadSave y writeSave', () => {
     ['tipo de pieza desconocido', { ...empty, current: attempt({ design: { nodes: [{ id: 'a', kind: 'zzz', instances: 1 }], edges: [] } as never }) }],
     ['completedLessons con números', { ...empty, completedLessons: [1] }],
     ['fase desconocida', { ...empty, attempts: [attempt({ phase: 'otra' as never })] }],
+    ['arista con extremo desconocido', { ...empty, current: attempt({ design: { nodes: [{ id: 'c', kind: 'client', instances: 1 }], edges: [{ from: 'c', to: 'zz' }] } }) }],
+    ['ids de nodo duplicados', { ...empty, current: attempt({ design: { nodes: [{ id: 'c', kind: 'client', instances: 1 }, { id: 'c', kind: 'api', instances: 1 }], edges: [] } }) }],
+    ['veredicto parcial inválido', { ...empty, current: attempt({ facts: { askedQuestionIds: [], scopeChoices: {}, estimates: { readRps: 'bien', writeRps: 'x' } } as never }) }],
+    ['estimates no es objeto', { ...empty, current: attempt({ facts: { askedQuestionIds: [], scopeChoices: {}, estimates: null } as never }) }],
     ['veredicto inválido', { ...empty, current: attempt({ facts: { askedQuestionIds: [], scopeChoices: {}, estimates: { readRps: 'x' } } as never }) }],
     ['nivel de pista inválido', { ...empty, current: attempt({ hints: [{ key: 'k', level: 9 }] as never }) }],
   ])('forma incorrecta (%s) se trata como corrupto', (_n, bad) => {
@@ -62,9 +66,22 @@ describe('loadSave y writeSave', () => {
     expect(() => writeSave(fakeStorage({}, true), empty)).not.toThrow()
     expect(() => loadSave(fakeStorage({ 'sdw-save': '{x' }, true))).not.toThrow()
   })
-  it('un fallo de getItem no lanza', () => {
-    expect(loadSave(fakeStorage({}, false, true)).save).toEqual(empty)
-    expect(() => writeSave(fakeStorage({}, false, true), empty)).not.toThrow()
+  it('un fallo de getItem no lanza, avisa y no escribe', () => {
+    const r = loadSave(fakeStorage({}, false, true))
+    expect(r.save).toEqual(empty)
+    expect(r.warning).toBeTruthy()
+    const s = fakeStorage({ 'sdw-save': exportSave({ ...empty, completedLessons: ['l1'] }) })
+    const flaky = { ...s, getItem: () => { throw new Error('bloqueado') } } as Storage
+    expect(() => writeSave(flaky, empty)).not.toThrow()
+    expect(JSON.parse(s.getItem('sdw-save')!).completedLessons).toEqual(['l1'])
+  })
+  it('conserva un current con estimaciones parciales', () => {
+    const s = fakeStorage()
+    const save: Save = { ...empty, current: attempt({ phase: 'estimacion', facts: { askedQuestionIds: [], scopeChoices: {}, estimates: { readRps: 'bien' } } }) }
+    writeSave(s, save)
+    expect(loadSave(s)).toEqual({ save, warning: null })
+    const vacio: Save = { ...empty, current: attempt({ phase: 'informe', facts: { askedQuestionIds: [], scopeChoices: {}, estimates: {} } }) }
+    expect(importSave(exportSave(vacio))).toEqual({ save: vacio })
   })
   it('no sobrescribe datos corruptos si no pudo copiarlos', () => {
     const s = fakeStorage({ 'sdw-save': '{x' }, true)
