@@ -325,10 +325,10 @@ Hacemos la primera pantalla real: el mapa con las 17 lecciones y las 8 misiones.
 
 Las lecciones y misiones aún sin crear aparecen como "Próximamente"; todo lo disponible está abierto desde el inicio. Enlaces de misiones a lecciones según la nota 18; Pastebin enlaza con 8, 12, 13 y 17. Los nodos de Pastebin y las lecciones 3, 4 y 13 tienen `available: true`.
 
-- [ ] **Step 1: Implementar el contexto de juego, la navegación por hash y `MapScreen` con React Flow en modo solo lectura.** Un nodo completado muestra sus estrellas y uno pendiente de repetición se señala con "Toca repetir".
-- [ ] **Step 2: Añadir exportar e importar progreso y mostrar `warning` en un aviso.**
-- [ ] **Step 3: Comprobar con `npm run build` y abrir la aplicación con `npm run dev`.** Esperado: compila; el mapa muestra 25 nodos, 4 disponibles.
-- [ ] **Step 4: Commit** `feat: mapa de lecciones y misiones`.
+- [x] **Step 1: Implementar el contexto de juego, la navegación por hash y `MapScreen` con React Flow en modo solo lectura.** Un nodo completado muestra sus estrellas y uno pendiente de repetición se señala con "Toca repetir".
+- [x] **Step 2: Añadir exportar e importar progreso y mostrar `warning` en un aviso.**
+- [x] **Step 3: Comprobar con `npm run build` y abrir la aplicación con `npm run dev`.** Esperado: compila; el mapa muestra 25 nodos, 4 disponibles.
+- [x] **Step 4: Commit** `feat: mapa de lecciones y misiones`.
 
 ### Task 8: Lienzo de diseño
 
