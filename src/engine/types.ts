@@ -34,3 +34,31 @@ export type DesignError = {
   message: string
   nodeIds: string[]
 }
+
+export type Scenario = {
+  id: string
+  name: string
+  readRps: number
+  writeRps: number
+  hotKeyShare: number
+  meanWriteRps?: number
+  down?: string
+}
+
+export type NodeMetrics = {
+  readRps: number
+  writeRps: number
+  utilization: number
+  saturated: boolean
+  latencyMs: number
+}
+
+export type SimResult = {
+  scenarioId: string
+  nodes: Record<string, NodeMetrics>
+  p99Ms: number
+  meanMs: number
+  errorRate: number
+  monthlyCost: number
+  bottleneckId: string | null
+}
