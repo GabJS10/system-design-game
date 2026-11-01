@@ -3,6 +3,8 @@ import { isStuck, starCap, type HintLevel, type HintSet, type HintUse, type Stuc
 
 const LEVELS: HintLevel[] = [1, 2, 3]
 const NAMES: Record<HintLevel, string> = { 1: 'Orientar', 2: 'Señalar', 3: 'Encaminar' }
+// Tope de estrellas que impone abrir cada nivel.
+const LEVEL_CAP: Record<HintLevel, number> = { 1: 3, 2: 2, 3: 1 }
 const COST: Record<HintLevel, string> = {
   1: 'Gratis.',
   2: 'Abrirlo limita este intento a 2 estrellas como máximo.',
@@ -32,7 +34,9 @@ export default function HintPanel({ hintSet, signals, free, onUse, used = [] }: 
     setConfirming(null)
     onUse(use)
   }
-  const ask = (level: HintLevel) => (free || level === 1 ? reveal(level) : setConfirming(level))
+  // Solo cuesta si el nivel baja el tope actual.
+  const costs = (level: HintLevel) => !free && starCap(all) > LEVEL_CAP[level]
+  const ask = (level: HintLevel) => (costs(level) ? setConfirming(level) : reveal(level))
 
   return (
     <aside className="hints" aria-label="Pistas">
@@ -60,7 +64,7 @@ export default function HintPanel({ hintSet, signals, free, onUse, used = [] }: 
                 </div>
               ) : (
                 <>
-                  {!free && <p className="hint-cost">{COST[level]}</p>}
+                  {costs(level) && <p className="hint-cost">{COST[level]}</p>}
                   <button type="button" onClick={() => ask(level)}>Abrir nivel {level}</button>
                 </>
               )}

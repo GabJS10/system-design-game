@@ -5,7 +5,7 @@ import { MISSIONS } from '../../missions'
 import type { Attempt, Save } from '../../save'
 import { navigate, useGame } from '../store'
 import {
-  abandonAttempt, askQuestion, readDraft, recordHint, setPhase, setScopeChoice, startAttempt, submitEstimates, writeDraft,
+  abandonAttempt, askQuestion, ESTIMATE_KEYS, isUsefulAsk, isUsefulScopeClick, readDraft, recordHint, setPhase, setScopeChoice, startAttempt, submitEstimates, writeDraft,
   type EstimateDraft, type EstimateKey,
 } from './attemptActions'
 import BriefingPhase from './BriefingPhase'
@@ -51,6 +51,7 @@ function Playing({ mission }: { mission: Mission }) {
   const [hidden, setHidden] = useState(document.hidden)
   // El registro parte de la visibilidad real al montar: una pestaña oculta no cuenta como tiempo activo.
   const events = useRef<ActivityEvent[]>([{ type: document.hidden ? 'hidden' : 'visible', at: Date.now() }])
+  const scopeBeforeLast = useRef<Record<string, boolean> | null>(null)
   const now = useNow(1000)
 
   const commit = (fn: (s: Save) => Save) => setSaveFailed(!update(fn))
@@ -70,6 +71,8 @@ function Playing({ mission }: { mission: Mission }) {
   if (!attempt) return null
   const variant = mission.variants.find((v) => v.id === attempt.variantId)!
   const inPlay = attempt.phase === 'informe' || attempt.phase === 'estimacion'
+  // Con la estimación revelada ya no queda nada que resolver: sin panel de ayuda.
+  const revealed = ESTIMATE_KEYS.every((k) => attempt.facts.estimates[k])
   const draft = readDraft(save, mission.id)
 
   const abandon = () => {
@@ -111,8 +114,12 @@ function Playing({ mission }: { mission: Mission }) {
           {attempt.phase === 'informe' && (
             <BriefingPhase
               mission={mission} variant={variant} attempt={attempt}
-              onAsk={(id) => { markChange(); edit((a) => askQuestion(a, id)) }}
-              onScope={(id, marked) => { markChange(); edit((a) => setScopeChoice(a, mission, id, marked)) }}
+              onAsk={(id) => { if (isUsefulAsk(mission, attempt, id)) markChange(); edit((a) => askQuestion(a, id)) }}
+              onScope={(id, marked) => {
+                if (isUsefulScopeClick(mission, attempt, id, marked, scopeBeforeLast.current)) markChange()
+                scopeBeforeLast.current = attempt.facts.scopeChoices
+                edit((a) => setScopeChoice(a, mission, id, marked))
+              }}
               onContinue={() => goTo('estimacion')}
             />
           )}
@@ -132,7 +139,7 @@ function Playing({ mission }: { mission: Mission }) {
             </section>
           )}
         </div>
-        {inPlay && <HintPanel key={attempt.phase} hintSet={hintSet} signals={signals} free={false} onUse={onUse} used={attempt.hints} />}
+        {inPlay && !(attempt.phase === 'estimacion' && revealed) && <HintPanel key={attempt.phase} hintSet={hintSet} signals={signals} free={false} onUse={onUse} used={attempt.hints} />}
       </div>
     </main>
   )

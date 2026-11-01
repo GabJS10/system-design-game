@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { pastebin } from '../../missions/pastebin'
 import type { Attempt, Save } from '../../save'
 import {
-  abandonAttempt, askQuestion, readDraft, recordHint, setPhase, setScopeChoice, startAttempt, submitEstimates, writeDraft,
+  abandonAttempt, askQuestion, isUsefulAsk, isUsefulScopeClick, readDraft, recordHint, setPhase, setScopeChoice, startAttempt, submitEstimates, writeDraft,
 } from './attemptActions'
 
 const empty = (): Save => ({ version: 1, attempts: [], current: null, completedLessons: [], lessonState: {} })
@@ -15,10 +15,11 @@ describe('startAttempt', () => {
     const a = fresh()
     expect(a).toMatchObject({
       missionId: 'pastebin', phase: 'informe', startedAt: NOW.toISOString(),
-      facts: { askedQuestionIds: [], scopeChoices: {}, estimates: {} },
+      facts: { askedQuestionIds: [], estimates: {} },
       design: { nodes: [{ id: 'client', kind: 'client', instances: 1 }], edges: [] },
       designRevision: 0, simulatedRevision: null, hints: [],
     })
+    expect(a.facts.scopeChoices).toEqual(Object.fromEntries(pastebin.scope.map((s) => [s.id, false])))
     expect(pastebin.variants.map((v) => v.id)).toContain(a.variantId)
   })
 
@@ -106,5 +107,30 @@ describe('borrador de estimaciones', () => {
   it('ignora datos ajenos o mal formados', () => {
     const save = { ...empty(), lessonState: { 'mision:pastebin:estimacion': { readRps: 5, otro: 'x' } } }
     expect(readDraft(save, 'pastebin')).toEqual({ readRps: '', writeRps: '', storageGbPerMonth: '' })
+  })
+})
+
+describe('cambios útiles para las señales de bloqueo', () => {
+  const useless = pastebin.questions.find((q) => !q.useful)!.id
+  const useful = pastebin.questions.find((q) => q.useful)!.id
+
+  it('solo cuenta preguntar algo útil y nuevo', () => {
+    expect(isUsefulAsk(pastebin, fresh(), useful)).toBe(true)
+    expect(isUsefulAsk(pastebin, fresh(), useless)).toBe(false)
+    expect(isUsefulAsk(pastebin, askQuestion(fresh(), useful), useful)).toBe(false)
+    expect(isUsefulAsk(pastebin, fresh(), 'no-existe')).toBe(false)
+  })
+
+  it('un clic de alcance cuenta, salvo que deshaga el clic anterior', () => {
+    const start = fresh()
+    expect(isUsefulScopeClick(pastebin, start, 'pegar', true, null)).toBe(true)
+    const marked = setScopeChoice(start, pastebin, 'pegar', true)
+    // Desmarcar justo después de marcar devuelve el estado previo: no es un cambio útil.
+    expect(isUsefulScopeClick(pastebin, marked, 'pegar', false, start.facts.scopeChoices)).toBe(false)
+    expect(isUsefulScopeClick(pastebin, marked, 'leer', true, start.facts.scopeChoices)).toBe(true)
+  })
+
+  it('un clic que no cambia nada no cuenta', () => {
+    expect(isUsefulScopeClick(pastebin, fresh(), 'pegar', false, null)).toBe(false)
   })
 })

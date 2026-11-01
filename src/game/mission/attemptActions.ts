@@ -15,7 +15,7 @@ export function startAttempt(save: Save, mission: Mission, now: Date): Save {
   if (save.current) return save
   const current: Attempt = {
     missionId: mission.id, variantId: pickVariant(save, mission).id, phase: 'informe', startedAt: now.toISOString(),
-    facts: { askedQuestionIds: [], scopeChoices: {}, estimates: {} },
+    facts: { askedQuestionIds: [], scopeChoices: Object.fromEntries(mission.scope.map((s) => [s.id, false])), estimates: {} },
     design: { nodes: [{ id: 'client', kind: 'client', instances: 1 }], edges: [] },
     designRevision: 0, simulatedRevision: null,
     decisions: {}, justifications: {}, hints: [], disputedDifferenceIds: [],
@@ -36,6 +36,19 @@ export const askQuestion = (a: Attempt, questionId: string): Attempt =>
 export function setScopeChoice(a: Attempt, mission: Mission, itemId: string, marked: boolean): Attempt {
   const scopeChoices = Object.fromEntries(mission.scope.map((s) => [s.id, a.facts.scopeChoices[s.id] ?? false]))
   return { ...a, facts: { ...a.facts, scopeChoices: { ...scopeChoices, [itemId]: marked } } }
+}
+
+/** Solo preguntar algo útil y nuevo cuenta como cambio útil para las señales de bloqueo. */
+export const isUsefulAsk = (mission: Mission, a: Attempt, questionId: string): boolean =>
+  Boolean(mission.questions.find((q) => q.id === questionId)?.useful) && !a.facts.askedQuestionIds.includes(questionId)
+
+/** Un clic de alcance cuenta si cambia algo y no devuelve el estado previo al clic anterior (`beforeLast`). */
+export function isUsefulScopeClick(
+  mission: Mission, a: Attempt, itemId: string, marked: boolean, beforeLast: Record<string, boolean> | null,
+): boolean {
+  const next = setScopeChoice(a, mission, itemId, marked).facts.scopeChoices
+  const differs = (from: Record<string, boolean>) => mission.scope.some((s) => next[s.id] !== (from[s.id] ?? false))
+  return differs(a.facts.scopeChoices) && (!beforeLast || differs(beforeLast))
 }
 
 export const setPhase = (a: Attempt, phase: Phase): Attempt => ({ ...a, phase })
