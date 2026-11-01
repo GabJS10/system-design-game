@@ -24,7 +24,7 @@
 - Las explicaciones de una lección aparecen después de que el jugador vea el resultado.
 - Solo se publican piezas que el motor simula de verdad.
 - Sin dependencias adicionales a las de este plan, salvo necesidad justificada por escrito en el commit.
-- Trabajar en la rama `feat/primera-entrega`, no en `master`.
+- Trabajar en la rama `feat/primera-entrega`, no en `main`.
 - Los mensajes de commit no llevan ninguna atribución a Claude: sin `Co-Authored-By` ni menciones similares.
 
 ## Review Focus
@@ -35,9 +35,26 @@
 4. **Progreso corrupto, de otra versión o JSON importado inválido:** la aplicación arranca, avisa y no borra lo que había guardado. Prueba en Task 6.
 5. **Dejar la pestaña oculta:** ese tiempo no cuenta como bloqueo y no aparece una oferta de ayuda al volver. Prueba en Task 5.
 
+## Orden de trabajo con worktrees
+
+Cada task se hace en su propio worktree y se integra en `feat/primera-entrega` antes de empezar la tanda siguiente. Las tasks de una misma tanda pueden avanzar en paralelo.
+
+| Tanda | Tasks | Posible conflicto al integrar |
+| --- | --- | --- |
+| 1 | 3 | Ninguno |
+| 2 | 4 y 5 | `src/engine/mission.ts`, si ambas lo tocan |
+| 3 | 6 | Ninguno |
+| 4 | 7 | Ninguno |
+| 5 | 8 y 9 | `src/styles.css` |
+| 6 | 10 y 11 | `src/styles.css` |
+| 7 | 12 y 13 | `src/lessons/index.ts` y `src/lessons/LessonScreen.tsx` |
+| 8 | 14 | Ninguno |
+
 ---
 
 ### Task 1: Base del proyecto, tipos y catálogo
+
+Montamos el proyecto con Vite y React, y definimos cómo se representa un diseño: piezas, conexiones y errores. También creamos el catálogo de piezas y el validador que rechaza diseños imposibles, como uno sin usuarios o sin almacenamiento. Todavía no hay nada jugable.
 
 **Files:**
 - Create: `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `.gitignore`, `src/main.tsx`, `src/App.tsx`
@@ -61,14 +78,16 @@ export type DesignError = { code: 'no-client' | 'cycle' | 'orphan' | 'no-storage
 
 - Produces: `PIECES: Record<PieceKind, PieceSpec>`, `PALETTE: PieceKind[]` (todas salvo `client`) y `validateDesign(design: Design): DesignError[]`.
 
-- [ ] **Step 1: Crear la rama, inicializar el proyecto con Vite (`react-ts`) e instalar `@xyflow/react`, `vitest` y `@playwright/test`.** Añadir los scripts `dev`, `build`, `test`, `e2e`. Incluir `dist`, `node_modules` y resultados de Playwright en `.gitignore`.
-- [ ] **Step 2: Escribir las pruebas fallidas `validateDesign`.** Un diseño válido devuelve `[]`. Devuelven su código: sin `client`, ciclo `a→b→a`, nodo sin conexiones, sin ningún `sql`, `nosql` u `objectStore`, e `instances` que sea `0`, negativo, decimal o mayor que `100`.
-- [ ] **Step 3: Ejecutar `npx vitest run src/engine/validate.test.ts`.** Esperado: FAIL porque `validateDesign` no existe.
-- [ ] **Step 4: Implementar tipos, catálogo y `validateDesign`.** `managed` es `true` en `dns`, `cdn`, `lb` y `objectStore`. Los mensajes de error son texto para el jugador.
-- [ ] **Step 5: Ejecutar `npx vitest run src/engine/validate.test.ts` y `npm run build`.** Esperado: PASS y compilación sin errores.
-- [ ] **Step 6: Commit** de todo lo anterior junto con el spec y este plan: `feat: base del proyecto y catálogo de piezas`.
+- [x] **Step 1: Crear la rama, inicializar el proyecto con Vite (`react-ts`) e instalar `@xyflow/react`, `vitest` y `@playwright/test`.** Añadir los scripts `dev`, `build`, `test`, `e2e`. Incluir `dist`, `node_modules` y resultados de Playwright en `.gitignore`.
+- [x] **Step 2: Escribir las pruebas fallidas `validateDesign`.** Un diseño válido devuelve `[]`. Devuelven su código: sin `client`, ciclo `a→b→a`, nodo sin conexiones, sin ningún `sql`, `nosql` u `objectStore`, e `instances` que sea `0`, negativo, decimal o mayor que `100`.
+- [x] **Step 3: Ejecutar `npx vitest run src/engine/validate.test.ts`.** Esperado: FAIL porque `validateDesign` no existe.
+- [x] **Step 4: Implementar tipos, catálogo y `validateDesign`.** `managed` es `true` en `dns`, `cdn`, `lb` y `objectStore`. Los mensajes de error son texto para el jugador.
+- [x] **Step 5: Ejecutar `npx vitest run src/engine/validate.test.ts` y `npm run build`.** Esperado: PASS y compilación sin errores.
+- [x] **Step 6: Commit** de todo lo anterior junto con el spec y este plan: `feat: base del proyecto y catálogo de piezas`.
 
 ### Task 2: Simulador
+
+Construimos el motor del juego. Dado un diseño y un escenario de tráfico, calcula cómo se reparte la carga y qué saturación, latencia, errores y coste tiene cada pieza. Es matemática determinista, sin interfaz: el mismo diseño siempre da el mismo resultado.
 
 **Files:**
 - Create: `src/engine/simulate.ts`
@@ -103,19 +122,21 @@ Reglas de propagación que el test debe fijar. Los recorridos parten de `client`
 - `p99Ms` es la suma por el camino síncrono más lento, incluido el camino de fallo de caché. `meanMs` pondera aciertos y fallos.
 - `down` marca un nodo: si tiene varias instancias pierde una; si tiene una desaparece. Sin `cache` o `cdn`, las peticiones siguen a su destino. Sin `sql`, una `replica` conectada asume sus escrituras. Sin destino posible, `errorRate = 1`.
 
-- [ ] **Step 1: Escribir las pruebas fallidas `simulate`,** una por cada regla, con diseños pequeños. Incluir:
+- [x] **Step 1: Escribir las pruebas fallidas `simulate`,** una por cada regla, con diseños pequeños. Incluir:
   - Con `client→api→sql`, `readRps: 100`, el nodo `sql` recibe 100 lecturas ponderadas.
   - Con caché delante y `hotKeyShare: 0`, `sql` recibe 20 lecturas.
   - `visitCounter` añade 100 escrituras a `sql`.
   - El mismo diseño y escenario dan resultados `toEqual`.
   - Con `utilization` 2, `errorRate` es `0,5`.
   - Duplicar instancias con carga baja no reduce la latencia a la mitad, pero duplica la capacidad.
-- [ ] **Step 2: Ejecutar `npx vitest run src/engine/simulate.test.ts`.** Esperado: FAIL.
-- [ ] **Step 3: Implementar `simulate` y `designCost`.** Recorrido topológico del grafo. Llamar a `simulate` con un diseño inválido lanza una excepción con el primer `DesignError`.
-- [ ] **Step 4: Ejecutar la prueba.** Esperado: PASS.
-- [ ] **Step 5: Commit** `feat: simulador determinista de carga`.
+- [x] **Step 2: Ejecutar `npx vitest run src/engine/simulate.test.ts`.** Esperado: FAIL.
+- [x] **Step 3: Implementar `simulate` y `designCost`.** Recorrido topológico del grafo. Llamar a `simulate` con un diseño inválido lanza una excepción con el primer `DesignError`.
+- [x] **Step 4: Ejecutar la prueba.** Esperado: PASS.
+- [x] **Step 5: Commit** `feat: simulador determinista de carga`.
 
 ### Task 3: Misión de Pastebin y puntuación
+
+Escribimos Pastebin como datos: preguntas, alcance, variantes de números, reglas, decisiones y diseño de referencia. Añadimos la evaluación de estimaciones y las 3 estrellas de rendimiento, fiabilidad y coste. Aquí calibramos los valores del catálogo para que un buen diseño gane y uno malo pierda por el motivo correcto.
 
 **Files:**
 - Create: `src/engine/mission.ts`, `src/engine/score.ts`, `src/engine/estimate.ts`, `src/missions/pastebin.ts`, `src/missions/index.ts`
@@ -183,6 +204,8 @@ Contenido de Pastebin, tomado de la página del ejercicio 1 (`https://app.notion
 
 ### Task 4: Comparación con la referencia
 
+Creamos la lógica del cierre de misión. Clasifica cada diferencia como requisito no descubierto, mala estimación, pieza que faltó o alternativa válida, y enlaza las carencias con su nota. Compara funciones cubiertas y hechos del intento, no el parecido entre grafos.
+
 **Files:**
 - Modify: `src/engine/score.ts`
 - Test: `src/engine/compare.test.ts`
@@ -209,6 +232,8 @@ Clasificación: alcance mal marcado o pregunta útil sin hacer es `requisito`; e
 - [ ] **Step 5: Commit** `feat: clasificación de diferencias`.
 
 ### Task 5: Pistas y repetición
+
+Creamos la ayuda del juego: detecta cuándo el jugador está bloqueado, elige una pista según el fallo actual y limita las estrellas si la pista es directa. También escribimos las pistas de Pastebin y calculamos cuándo repetir una misión. Esta task solo incluye la lógica y el contenido; el panel de ayuda llega en la Task 9.
 
 **Files:**
 - Create: `src/engine/hints.ts`, `src/engine/review.ts`
@@ -244,6 +269,8 @@ export function nextReviewDays(completedAttempts: number, uses: HintUse[]): 3 | 
 - [ ] **Step 6: Commit** `feat: pistas graduadas y calendario de repetición`.
 
 ### Task 6: Progreso guardado
+
+Guardamos el progreso en `localStorage` para poder cerrar la pestaña y seguir en el mismo punto. Añadimos exportación e importación en JSON, la lista de repasos pendientes y la rotación de variantes. Si los datos guardados están dañados, la aplicación arranca con un aviso y conserva una copia del texto original.
 
 **Files:**
 - Create: `src/save.ts`
@@ -283,6 +310,8 @@ export function pickVariant(save: Save, mission: Mission): Variant; // la menos 
 
 ### Task 7: Aplicación y mapa
 
+Hacemos la primera pantalla real: el mapa con las 17 lecciones y las 8 misiones. Los 4 contenidos de esta entrega quedan abiertos y los demás aparecen como "Próximamente". Incluye el estado global, la navegación, las estrellas, el aviso "Toca repetir" y los botones para exportar e importar el progreso.
+
 **Files:**
 - Create: `src/game/store.tsx`, `src/game/map/MapScreen.tsx`, `src/content.ts`, `src/styles.css`
 - Modify: `src/App.tsx`, `src/main.tsx`
@@ -303,6 +332,8 @@ Las lecciones y misiones aún sin crear aparecen como "Próximamente"; todo lo d
 
 ### Task 8: Lienzo de diseño
 
+Creamos el lienzo donde el jugador construye su arquitectura: añade, conecta, configura y borra piezas. Tras una simulación, cada pieza muestra su utilización y las saturadas se ven en rojo. Las misiones y lecciones reutilizarán este componente.
+
 **Files:**
 - Create: `src/game/canvas/DesignCanvas.tsx`, `src/game/canvas/PieceNode.tsx`, `src/game/canvas/Palette.tsx`
 - Modify: `src/styles.css`, `src/engine/types.ts`
@@ -318,6 +349,8 @@ Se pueden añadir, conectar, borrar y configurar piezas (instancias y `visitCoun
 - [ ] **Step 3: Commit** `feat: lienzo de arquitectura`.
 
 ### Task 9: Informe y estimación
+
+Hacemos jugable el inicio de una misión. El jugador interroga al jefe de producto, marca el alcance, escribe sus estimaciones y descubre los números reales antes de diseñar. También añadimos el reloj de 45 minutos y el panel de pistas, que se reutilizará en las siguientes fases.
 
 **Files:**
 - Create: `src/game/mission/MissionScreen.tsx`, `src/game/mission/BriefingPhase.tsx`, `src/game/mission/EstimatePhase.tsx`, `src/game/mission/Clock.tsx`, `src/game/mission/HintPanel.tsx`
@@ -336,6 +369,8 @@ El panel de ayuda ofrece una pista cuando `isStuck` es verdadero, sin mostrarla 
 - [ ] **Step 4: Commit** `feat: fases de informe y estimación`.
 
 ### Task 10: Simulación, decisiones y comparación
+
+Completamos el bucle de la misión. El jugador diseña, simula, corrige lo que falla, justifica sus decisiones y compara su resultado con la referencia. Si cambia el diseño, debe volver a simular antes de cerrar. Al terminar esta task, Pastebin se puede jugar de principio a fin.
 
 **Files:**
 - Create: `src/game/mission/DesignPhase.tsx`, `src/game/mission/DecisionsPhase.tsx`, `src/game/mission/ComparePhase.tsx`, `src/engine/attempt.ts`
@@ -357,6 +392,8 @@ La comparación muestra estrellas obtenidas, tope por pistas, diseño propio y r
 - [ ] **Step 6: Commit** `feat: simulación, decisiones y comparación`.
 
 ### Task 11: Marco de lecciones y lección 3
+
+Creamos la estructura común de las lecciones: predecir, intervenir, observar y explicar, con pistas sin coste. La estrenamos con la lección de latencia y throughput, que usa solo el motor: el jugador añade instancias y carga hasta encontrar el límite.
 
 **Files:**
 - Create: `src/lessons/types.ts`, `src/lessons/LessonScreen.tsx`, `src/lessons/EngineChallenge.tsx`, `src/lessons/latency.ts`, `src/lessons/index.ts`
@@ -393,6 +430,8 @@ Lección 3, nota `https://app.notion.com/p/3f9b43c51c9381fba54ddb28e44d5381`, 3 
 
 ### Task 12: Lección 13, Caché
 
+Hacemos la primera lección que combina motor y escena propia. El jugador usa una caché para aliviar la base, provoca datos viejos y pérdida de datos con distintas estrategias, y comprueba qué pasa cuando la caché cae. Valida el formato mixto.
+
 **Files:**
 - Create: `src/lessons/cacheSim.ts`, `src/lessons/CacheScene.tsx`, `src/lessons/cache.ts`
 - Modify: `src/lessons/index.ts`, `src/lessons/LessonScreen.tsx`
@@ -427,6 +466,8 @@ Lección 13, nota `https://app.notion.com/p/3fab43c51c938127b062d55184fdb76f`, 3
 - [ ] **Step 6: Commit** `feat: lección de caché`.
 
 ### Task 13: Lección 4, CAP
+
+Hacemos la lección que usa solo una escena propia: un banco con dos cajeros. El jugador corta la red entre ellos, compara los modos CP y AP, provoca una doble retirada y elige qué conviene a cada producto. Valida el formato sin motor.
 
 **Files:**
 - Create: `src/lessons/capSim.ts`, `src/lessons/CapScene.tsx`, `src/lessons/cap.ts`
@@ -468,6 +509,8 @@ La explicación final corrige "elige 2 de 3": la elección real es C o A durante
 - [ ] **Step 6: Commit** `feat: lección de CAP`.
 
 ### Task 14: Prueba de punta a punta y publicación
+
+Probamos la entrega completa en un navegador real: mapa, las 3 lecciones, una partida de Pastebin con pista y recargas para comprobar el progreso. Después pasamos todas las comprobaciones y, solo con la confirmación de Gabriel, publicamos en Vercel.
 
 **Files:**
 - Create: `playwright.config.ts`, `e2e/juego.spec.ts`
