@@ -289,4 +289,177 @@ export const pastebin: Mission = {
   relatedLessons: ['latency', 'cache'],
   growthNote:
     'Para seguir creciendo, mide, encuentra el cuello de botella y resuélvelo. Añade DNS y CDN delante, varios servidores web como proxy inverso tras los balanceadores y una capa de aplicación con APIs de lectura y de escritura. Las lecturas son lo primero que se escala: caché en memoria para los pastes populares y réplicas de lectura para los fallos de caché. Las escrituras las aguanta un maestro SQL con failover; si no bastara, recurre a federación, sharding, desnormalización o NoSQL. El contenido sigue en el almacenamiento de objetos, y las estadísticas pasan de los logs a un trabajo MapReduce que llena un almacén de datos.',
+  hints: [
+    {
+      key: 'informe:*:*',
+      texts: [
+        '¿Qué preguntas te dan información que cambia el diseño y cuáles no?',
+        'Fíjate en lo que dicen sobre volumen, caducidad y estadísticas; el color o el lenguaje no cambian la arquitectura.',
+        'Antes de dibujar, deja claro qué entra en el alcance y qué queda fuera: lo que no se pregunta no se puede dimensionar.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'estimacion:*:*',
+      texts: [
+        '¿Cuántas lecturas llegan por cada escritura y cuántas peticiones por segundo son en el caso medio?',
+        'Pasa el volumen mensual a peticiones por segundo; el reparto entre lecturas y escrituras es muy desigual.',
+        'Divide el volumen entre los segundos de un mes y compara el resultado con lo que aguanta una pieza; el pico multiplica ese tráfico.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:*:*',
+      texts: [
+        '¿Qué escenario falla primero y qué pieza llega antes al límite?',
+        'Revisa que el diseño conecte al cliente con un almacenamiento y que no queden piezas sueltas.',
+        'Sigue el camino de una petición desde el cliente hasta el dato y comprueba cada salto.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:pico:sql',
+      texts: [
+        '¿Qué pieza llega antes al límite cuando sube el tráfico?',
+        'Las lecturas saturan la base de datos; el problema no son las escrituras.',
+        'Necesitas evitar que las lecturas repetidas lleguen a la base. Después, comprueba qué pasa si lo que añadas deja de funcionar.',
+      ],
+      lessonId: 'cache',
+    },
+    {
+      key: 'simulacion:viral:sql',
+      texts: [
+        '¿Qué le pasa a la base cuando casi todas las peticiones piden el mismo paste?',
+        'Un paste viral concentra las lecturas en muy pocos datos y la base se satura repitiendo siempre la misma respuesta.',
+        'Necesitas servir las lecturas repetidas sin pasar por la base. Después, revisa qué ocurre si esa ayuda deja de funcionar.',
+      ],
+      lessonId: 'cache',
+    },
+    {
+      key: 'simulacion:*:web',
+      texts: [
+        '¿Cuántas peticiones llegan a tus servidores y hace falta que todas lleguen hasta ellos?',
+        'Los servidores de aplicación se saturan con lecturas repetidas, aunque la base ya esté protegida.',
+        'Necesitas que las lecturas populares no cuesten trabajo a los servidores cada vez que se piden.',
+      ],
+      lessonId: 'cache',
+    },
+    {
+      key: 'simulacion:*:sql-escrituras',
+      texts: [
+        '¿Qué parte del tráfico que recibe la base es de escritura y cuál de lectura?',
+        'Las escrituras saturan la base; aliviar las lecturas no lo arreglará.',
+        'Necesitas repartir las escrituras entre varias máquinas de datos o elegir un almacén pensado para escalar al escribir.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:caida:*',
+      texts: [
+        '¿Qué pasa con el servicio si una pieza deja de responder?',
+        'Hay piezas que, si se caen, dejan sin servicio a todos los usuarios.',
+        'Necesitas redundancia en lo que hoy tiene una sola copia, y que el tráfico sepa repartirse entre las copias.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:caida:sql',
+      texts: [
+        '¿Qué pasa con los datos si la base deja de responder?',
+        'Toda la información de los pastes depende de una sola copia.',
+        'Necesitas que los datos existan en más de un sitio, de modo que el servicio siga si falla uno.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:caida:web',
+      texts: [
+        '¿Qué pasa con el servicio si el servidor que atiende las peticiones deja de responder?',
+        'Hay un único servidor de aplicación y, sin él, nadie llega a los datos.',
+        'Necesitas varias copias del servidor y algo que reparta el tráfico entre ellas.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:*:separar',
+      texts: [
+        '¿Todo lo que guardas se consulta y crece al mismo ritmo?',
+        'Metadatos y contenido tienen formas y tamaños distintos, y hoy comparten almacén.',
+        'Necesitas un almacén distinto para cada tipo de dato, cada uno adecuado a lo que guarda.',
+      ],
+    },
+    {
+      key: 'simulacion:*:enlaces',
+      texts: [
+        '¿Cómo se convierte un paste en un enlace corto que nadie más tenga?',
+        'Falta decidir cómo se genera el identificador del enlace.',
+        'Necesitas un método que dé identificadores cortos y únicos; contesta la decisión sobre la generación.',
+      ],
+    },
+    {
+      key: 'simulacion:*:estadisticas',
+      texts: [
+        '¿Hace falta contar cada visita en el mismo momento en que ocurre?',
+        'Las estadísticas no son en tiempo real, y contarlas en la base añade una escritura a cada lectura.',
+        'Necesitas procesar en diferido los registros de los servidores, sin tocar la base en cada visita.',
+      ],
+    },
+    {
+      key: 'simulacion:*:caducidad',
+      texts: [
+        '¿Quién borra un paste cuando llega su fecha de caducidad?',
+        'Nadie recorre los metadatos para eliminar lo caducado.',
+        'Necesitas un proceso en segundo plano que revise periódicamente los metadatos y borre lo que caducó.',
+      ],
+    },
+    {
+      key: 'simulacion:*:balanceo',
+      texts: [
+        '¿Qué observas en el trabajo que recibe cada servidor cuando hay varios iguales?',
+        'Tienes varias copias de los servidores, pero nada reparte el tráfico entre ellas.',
+        'Necesitas un mecanismo que decida a qué servidor va cada petición.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:*:coste',
+      texts: [
+        '¿Qué piezas de tu diseño están muy por encima de lo que piden los escenarios?',
+        'El diseño funciona, pero cuesta más que el presupuesto.',
+        'Necesitas quitar capacidad donde sobra, sin perder lo que protege al servicio de los picos y de las caídas.',
+      ],
+    },
+    {
+      key: 'decisiones:*:*',
+      texts: [
+        '¿Qué datos de tu estimación respaldan esta decisión?',
+        'Una buena decisión se justifica con el volumen y los requisitos de la misión.',
+        'Descarta primero las opciones que no soportan el volumen o que rompen el enlace, y compara las que quedan.',
+      ],
+    },
+    {
+      key: 'decisiones:*:generacion',
+      texts: [
+        '¿Qué necesita un identificador para ser corto y no repetirse?',
+        'Hay opciones que dan identificadores demasiado largos o con caracteres que rompen un enlace.',
+        'Elige un método que produzca texto corto con letras y dígitos y que sea muy improbable que se repita.',
+      ],
+    },
+    {
+      key: 'decisiones:*:longitud',
+      texts: [
+        '¿Cuántos enlaces distintos caben con cada longitud de texto?',
+        'Calcula las combinaciones posibles con letras y dígitos y compáralas con el total de enlaces de tres años.',
+        'Elige la longitud más corta cuyo número de combinaciones supere ese total con holgura.',
+      ],
+    },
+    {
+      key: 'decisiones:*:contenido',
+      texts: [
+        '¿Qué tipo de dato es el contenido de un paste y qué almacén está pensado para guardarlo?',
+        'Mezclar el contenido con los metadatos o montar servidores propios complica el crecimiento.',
+        'Elige un almacén gestionado que escale solo con el tamaño del contenido.',
+      ],
+    },
+  ],
 }
