@@ -35,8 +35,10 @@ function balancesServers(design: Design): boolean {
   })
 }
 
-const connects = (design: Design, from: PieceKind, to: PieceKind[]) =>
-  design.edges.some((e) => kindOf(design, e.from) === from && to.includes(kindOf(design, e.to) as PieceKind))
+const connects = (design: Design, from: PieceKind[], to: PieceKind[]) =>
+  design.edges.some(
+    (e) => from.includes(kindOf(design, e.from) as PieceKind) && to.includes(kindOf(design, e.to) as PieceKind),
+  )
 
 function reference(webInstances: number, withCdn: boolean): Design {
   const single = (id: string, kind: PieceKind): DesignNode => ({ id, kind, instances: 1 })
@@ -196,15 +198,15 @@ export const pastebin: Mission = {
     },
     {
       id: 'estadisticas',
-      label: 'Estadísticas por lotes a partir de los servidores web, sin contar visitas en la base',
+      label: 'Estadísticas por lotes a partir de los logs de los servidores, sin contar visitas en la base',
       noteUrl: EXERCISE_URL,
-      check: (design) => connects(design, 'web', ['batch']) && !design.nodes.some((n) => n.visitCounter),
+      check: (design) => connects(design, ['web', 'api'], ['batch']) && !design.nodes.some((n) => n.visitCounter),
     },
     {
       id: 'caducidad',
       label: 'Un proceso borra los caducados del almacén de metadatos',
       noteUrl: EXERCISE_URL,
-      check: (design) => connects(design, 'worker', METADATA_KINDS),
+      check: (design) => connects(design, ['worker'], METADATA_KINDS),
     },
     {
       id: 'balanceo',

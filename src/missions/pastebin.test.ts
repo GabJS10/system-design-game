@@ -114,9 +114,24 @@ describe('reglas de Pastebin', () => {
     expect(failed(reference, {})).toEqual(['enlaces'])
   })
 
-  it('estadisticas exige el lote detrás de web', () => {
+  it('estadisticas exige el lote detrás de los servidores', () => {
     const edges = reference.edges.map((e) => (e.to === 'batch' ? { from: 'sql', to: 'batch' } : e))
     expect(failed({ ...reference, edges })).toEqual(['estadisticas'])
+  })
+
+  const rename = (id: string) => (id === 'web' ? 'api' : id)
+  const logsFromApi: Design = {
+    nodes: reference.nodes.map((n) => (n.kind === 'web' ? { ...n, id: 'api', kind: 'api' } : n)),
+    edges: reference.edges.map((e) => ({ from: rename(e.from), to: rename(e.to) })),
+  }
+
+  it('estadisticas acepta los logs desde api y no pierde fiabilidad', () => {
+    expect(failed(logsFromApi)).toEqual([])
+    expect(scoreDesign(pastebin, pastebin.variants[0], logsFromApi, VALID_DECISIONS).reliability).toBe(true)
+  })
+
+  it('estadisticas sigue rechazando el contador con los logs desde api', () => {
+    expect(failed(withVisitCounter(logsFromApi))).toEqual(['estadisticas'])
   })
 
   it('caducidad exige el worker conectado a los metadatos', () => {
