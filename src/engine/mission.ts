@@ -1,3 +1,4 @@
+import type { HintSet } from './hints'
 import type { Design, PieceKind, Scenario } from './types'
 
 export type Question = { id: string; text: string; answer: string; useful: boolean }
@@ -45,6 +46,7 @@ export type Mission = {
   maxErrorRate: number
   relatedLessons: string[]
   growthNote: string
+  hints: HintSet[]
 }
 
 const PEAK_FACTOR = 3

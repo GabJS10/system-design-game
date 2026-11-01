@@ -48,6 +48,7 @@ const mission = (overrides: Partial<Mission> = {}): Mission => ({
   maxErrorRate: 0.001,
   relatedLessons: [],
   growthNote: '',
+  hints: [],
   ...overrides,
 })
 
