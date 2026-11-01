@@ -1,4 +1,5 @@
 import type { StarResult } from './score'
+import { isBalanced } from './simulate'
 import type { Design, SimResult } from './types'
 
 export type HintLevel = 1 | 2 | 3
@@ -50,7 +51,11 @@ export function diagnose(design: Design, stars: StarResult, results: SimResult[]
   }
 
   const down = design.nodes.find((n) => stars.failingDownIds.includes(n.id))
-  if (down) return `simulacion:caida:${down.kind}`
+  if (down) {
+    const copies = design.nodes.filter((n) => n.kind === down.kind).reduce((total, n) => total + n.instances, 0)
+    if ((down.kind === 'web' || down.kind === 'api') && copies > 1 && !isBalanced(design, down.id)) return 'simulacion:caida:balanceo'
+    return `simulacion:caida:${down.kind}`
+  }
   // Sin causa concreta (por ejemplo un diseño inválido), no se acusa al coste.
   if (!stars.performance || !stars.reliability) return 'simulacion:*:*'
   return stars.cost ? 'ok:*:*' : 'simulacion:*:coste'

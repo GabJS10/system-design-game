@@ -85,6 +85,16 @@ describe.each(pastebin.variants)('diagnóstico en la variante $id', (variant) =>
   it('la referencia no tiene fallo que diagnosticar', () => {
     expect(diagnoseFor(variant, reference)).toBe('ok:*:*')
   })
+
+  it('sin decisiones, el diseño recibe el diagnóstico de su fallo real', () => {
+    const during = (design: Design) => {
+      const stars = scoreDesign(pastebin, variant, design, {}, 'diseno')
+      return diagnose(design, stars, scenariosFor(variant).map((s) => simulate(design, s)))
+    }
+    expect(during(reference)).toBe('ok:*:*')
+    expect(during(SINGLE_MACHINE)).not.toBe(during(reference))
+    expect(during(SINGLE_MACHINE)).not.toContain('enlaces')
+  })
 })
 
 describe('claves concretas', () => {
@@ -103,7 +113,7 @@ describe('claves concretas', () => {
     expect(key(base, reference, {})).toBe('simulacion:*:enlaces')
     expect(key(base, withVisitCounter(reference))).toBe('simulacion:*:estadisticas')
     expect(key(base, removeNode(reference, 'worker'))).toBe('simulacion:*:caducidad')
-    expect(key(base, removeNode(reference, 'lb'))).toBe('simulacion:*:balanceo')
+    expect(key(base, removeNode(reference, 'lb'))).toBe('simulacion:caida:balanceo')
     expect(key(base, oversized(reference))).toBe('simulacion:*:coste')
   })
 

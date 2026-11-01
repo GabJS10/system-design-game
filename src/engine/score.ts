@@ -1,6 +1,5 @@
-import { PIECES } from './components'
 import type { EstimateVerdict } from './estimate'
-import { scenariosFor, type Mission, type Variant } from './mission'
+import { runOrder, type Mission, type Variant } from './mission'
 import { designCost, simulate } from './simulate'
 import type { Design, Scenario } from './types'
 import { validateDesign } from './validate'
@@ -20,6 +19,7 @@ export function scoreDesign(
   variant: Variant,
   design: Design,
   decisions: Record<string, string>,
+  stage: 'diseno' | 'final' = 'final',
 ): StarResult {
   if (validateDesign(design).length > 0) {
     return {
@@ -38,13 +38,13 @@ export function scoreDesign(
     return p99Ms <= mission.latencyTargetMs && errorRate <= mission.maxErrorRate
   }
 
-  const scenarios = scenariosFor(variant)
-  const peak = scenarios.find((s) => s.id === 'pico') as Scenario
-  const failingScenarioIds = scenarios.filter((s) => !meetsTargets(s)).map((s) => s.id)
-  const failingDownIds = design.nodes
-    .filter((n) => !PIECES[n.kind].managed && !meetsTargets({ ...peak, down: n.id }))
-    .map((n) => n.id)
-  const failedRules = mission.rules.filter((r) => !r.check(design, decisions)).map((r) => r.id)
+  const failing = runOrder(variant, design).filter((s) => !meetsTargets(s))
+  const failingScenarioIds = failing.filter((s) => !s.down).map((s) => s.id)
+  const failingDownIds = failing.flatMap((s) => s.down ?? [])
+  const failedRules = mission.rules
+    .filter((r) => stage === 'final' || r.phase === 'diseno')
+    .filter((r) => !r.check(design, decisions))
+    .map((r) => r.id)
 
   const performance = failingScenarioIds.length === 0
   const reliability = failingDownIds.length === 0 && failedRules.length === 0
@@ -146,7 +146,8 @@ export function compareDesign(
     })
   }
 
-  for (const rule of mission.rules.filter((r) => !r.check(design, decisions))) {
+  // Las reglas de decisión ya salen arriba, una diferencia por decisión.
+  for (const rule of mission.rules.filter((r) => r.phase === 'diseno' && !r.check(design, decisions))) {
     diffs.push({
       id: `regla:${rule.id}`,
       category: 'pieza',

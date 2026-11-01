@@ -1,44 +1,69 @@
-import type { Mission } from '../engine/mission'
+import type { Decision, Mission } from '../engine/mission'
+import { groupOf } from '../engine/simulate'
 import type { Design, DesignNode, PieceKind } from '../engine/types'
+import { DATA, OFF_REQUEST, requestReach } from '../engine/validate'
 
 const EXERCISE_URL = 'https://app.notion.com/p/402b43c51c9381559d63d940e507850b'
 const CACHE_URL = 'https://app.notion.com/p/3fab43c51c938127b062d55184fdb76f'
 
 const METADATA_KINDS: PieceKind[] = ['sql', 'nosql']
 const CONTENT_KINDS: PieceKind[] = ['objectStore', 'nosql']
-
-function reachableFromClient({ nodes, edges }: Design): Set<string> {
-  const reached = new Set(nodes.filter((n) => n.kind === 'client').map((n) => n.id))
-  for (const id of reached) {
-    for (const edge of edges) if (edge.from === id) reached.add(edge.to)
-  }
-  return reached
-}
+const DATABASES: PieceKind[] = ['sql', 'replica', 'nosql']
+const LOG_SOURCES: PieceKind[] = ['web', 'api']
+const CLEANERS: PieceKind[] = ['worker', 'batch']
 
 const kindOf = (design: Design, id: string) => design.nodes.find((n) => n.id === id)?.kind
 
+/** Almacenes que toca cualquier lectura: cada grupo de destinos la recibe, pero solo un miembro de cada grupo. */
+function storesOfEveryRead(design: Design): Set<PieceKind> {
+  const memo = new Map<string, Set<PieceKind>>()
+  const stores = (id: string): Set<PieceKind> => {
+    const kind = kindOf(design, id) as PieceKind
+    if (DATA.includes(kind)) return new Set([kind === 'replica' ? 'sql' : kind])
+    if (OFF_REQUEST.includes(kind)) return new Set()
+    const known = memo.get(id)
+    if (known) return known
+    const groups = new Map<string, Set<PieceKind>>()
+    for (const { to } of design.edges.filter((e) => e.from === id)) {
+      const group = groupOf(kindOf(design, to) as PieceKind)
+      const reached = stores(to)
+      const common = groups.get(group)
+      groups.set(group, common ? new Set([...common].filter((k) => reached.has(k))) : reached)
+    }
+    const found = new Set([...groups.values()].flatMap((set) => [...set]))
+    memo.set(id, found)
+    return found
+  }
+  const client = design.nodes.find((n) => n.kind === 'client')
+  return client ? stores(client.id) : new Set()
+}
+
 function separatesMetadataAndContent(design: Design): boolean {
-  const reached = reachableFromClient(design)
-  const live = design.nodes.filter((n) => reached.has(n.id))
-  const metadata = live.filter((n) => METADATA_KINDS.includes(n.kind))
-  const content = live.filter((n) => CONTENT_KINDS.includes(n.kind))
-  return metadata.some((m) => content.some((c) => c.id !== m.id))
+  const stores = storesOfEveryRead(design)
+  // Dos NoSQL del mismo grupo son shards de un solo almacén, no dos almacenes.
+  return stores.has('objectStore') ? METADATA_KINDS.some((k) => stores.has(k)) : stores.has('sql') && stores.has('nosql')
 }
 
-function balancesServers(design: Design): boolean {
-  const hasBalancer = (node: DesignNode) =>
-    design.edges.some((e) => e.to === node.id && kindOf(design, e.from) === 'lb')
-  return (['web', 'api'] as const).every((kind) => {
-    const servers = design.nodes.filter((n) => n.kind === kind)
-    const several = servers.length > 1 || servers.some((n) => n.instances > 1)
-    return !several || servers.every(hasBalancer)
-  })
+/** Los logs salen de un servidor y pueden pasar por una cola o por archivos; leer la base no son logs. */
+function logsReachBatch(design: Design): boolean {
+  const live = requestReach(design)
+  const seen = new Set(design.nodes.filter((n) => LOG_SOURCES.includes(n.kind) && live.has(n.id)).map((n) => n.id))
+  for (const id of seen) {
+    if (DATABASES.includes(kindOf(design, id) as PieceKind)) continue
+    for (const edge of design.edges) if (edge.from === id) seen.add(edge.to)
+  }
+  return design.nodes.some((n) => n.kind === 'batch' && seen.has(n.id))
 }
 
-const connects = (design: Design, from: PieceKind[], to: PieceKind[]) =>
-  design.edges.some(
-    (e) => from.includes(kindOf(design, e.from) as PieceKind) && to.includes(kindOf(design, e.to) as PieceKind),
+function cleansLiveMetadata(design: Design): boolean {
+  const live = requestReach(design)
+  return design.edges.some(
+    (e) =>
+      CLEANERS.includes(kindOf(design, e.from) as PieceKind) &&
+      METADATA_KINDS.includes(kindOf(design, e.to) as PieceKind) &&
+      live.has(e.to),
   )
+}
 
 function reference(webInstances: number, withCdn: boolean): Design {
   const single = (id: string, kind: PieceKind): DesignNode => ({ id, kind, instances: 1 })
@@ -73,6 +98,44 @@ function reference(webInstances: number, withCdn: boolean): Design {
     ],
   }
 }
+
+const DECISIONS: Decision[] = [
+  {
+    id: 'generacion',
+    prompt: '¿Cómo generas el enlace corto?',
+    options: [
+      { id: 'md5', label: 'Hash MD5 codificado en Base62' },
+      { id: 'contador', label: 'Contador global codificado en Base62' },
+      { id: 'base64', label: 'Base64 sin escapar' },
+    ],
+    validOptionIds: ['md5', 'contador'],
+    noteUrl: EXERCISE_URL,
+  },
+  {
+    id: 'longitud',
+    prompt: '¿Cuántos caracteres tiene el enlace? Debe alcanzar para 360 millones de enlaces en 3 años.',
+    options: [
+      { id: '4', label: '4 caracteres' },
+      { id: '6', label: '6 caracteres' },
+      { id: '7', label: '7 caracteres' },
+      { id: '20', label: '20 caracteres' },
+    ],
+    validOptionIds: ['6', '7'],
+    noteUrl: EXERCISE_URL,
+  },
+  {
+    id: 'contenido',
+    prompt: '¿Dónde guardas el contenido de cada paste?',
+    options: [
+      { id: 'objetos', label: 'En un almacenamiento de objetos gestionado' },
+      { id: 'documentos', label: 'En una base de documentos NoSQL' },
+      { id: 'tabla', label: 'En la misma tabla que los metadatos' },
+      { id: 'archivos', label: 'En servidores de archivos propios' },
+    ],
+    validOptionIds: ['objetos', 'documentos'],
+    noteUrl: EXERCISE_URL,
+  },
+]
 
 export const pastebin: Mission = {
   id: 'pastebin',
@@ -188,70 +251,39 @@ export const pastebin: Mission = {
       id: 'separar',
       label: 'Metadatos y contenido en almacenes distintos',
       noteUrl: EXERCISE_URL,
+      phase: 'diseno',
       check: separatesMetadataAndContent,
     },
     {
       id: 'enlaces',
       label: 'Hay un método para generar los enlaces',
       noteUrl: EXERCISE_URL,
+      phase: 'decisiones',
       check: (_, decisions) => Boolean(decisions.generacion),
+    },
+    {
+      id: 'decisiones',
+      label: 'Las decisiones clave funcionan para este problema',
+      noteUrl: EXERCISE_URL,
+      phase: 'decisiones',
+      check: (_, decisions) => DECISIONS.every((d) => d.validOptionIds.includes(decisions[d.id])),
     },
     {
       id: 'estadisticas',
       label: 'Estadísticas por lotes a partir de los logs de los servidores, sin contar visitas en la base',
       noteUrl: EXERCISE_URL,
-      check: (design) => connects(design, ['web', 'api'], ['batch']) && !design.nodes.some((n) => n.visitCounter),
+      phase: 'diseno',
+      check: (design) => logsReachBatch(design) && !design.nodes.some((n) => n.visitCounter),
     },
     {
       id: 'caducidad',
       label: 'Un proceso borra los caducados del almacén de metadatos',
       noteUrl: EXERCISE_URL,
-      check: (design) => connects(design, ['worker'], METADATA_KINDS),
-    },
-    {
-      id: 'balanceo',
-      label: 'Varios servidores necesitan un balanceador delante',
-      noteUrl: EXERCISE_URL,
-      check: balancesServers,
+      phase: 'diseno',
+      check: cleansLiveMetadata,
     },
   ],
-  decisions: [
-    {
-      id: 'generacion',
-      prompt: '¿Cómo generas el enlace corto?',
-      options: [
-        { id: 'md5', label: 'Hash MD5 codificado en Base62' },
-        { id: 'contador', label: 'Contador global codificado en Base62' },
-        { id: 'base64', label: 'Base64 sin escapar' },
-      ],
-      validOptionIds: ['md5', 'contador'],
-      noteUrl: EXERCISE_URL,
-    },
-    {
-      id: 'longitud',
-      prompt: '¿Cuántos caracteres tiene el enlace? Debe alcanzar para 360 millones de enlaces en 3 años.',
-      options: [
-        { id: '4', label: '4 caracteres' },
-        { id: '6', label: '6 caracteres' },
-        { id: '7', label: '7 caracteres' },
-        { id: '20', label: '20 caracteres' },
-      ],
-      validOptionIds: ['6', '7'],
-      noteUrl: EXERCISE_URL,
-    },
-    {
-      id: 'contenido',
-      prompt: '¿Dónde guardas el contenido de cada paste?',
-      options: [
-        { id: 'objetos', label: 'En un almacenamiento de objetos gestionado' },
-        { id: 'documentos', label: 'En una base de documentos NoSQL' },
-        { id: 'tabla', label: 'En la misma tabla que los metadatos' },
-        { id: 'archivos', label: 'En servidores de archivos propios' },
-      ],
-      validOptionIds: ['objetos', 'documentos'],
-      noteUrl: EXERCISE_URL,
-    },
-  ],
+  decisions: DECISIONS,
   variants: [
     {
       id: 'base',
@@ -413,7 +445,7 @@ export const pastebin: Mission = {
       ],
     },
     {
-      key: 'simulacion:*:balanceo',
+      key: 'simulacion:caida:balanceo',
       texts: [
         '¿Qué observas en el trabajo que recibe cada servidor cuando hay varios iguales?',
         'Tienes varias copias de los servidores, pero nada reparte el tráfico entre ellas.',

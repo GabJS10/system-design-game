@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { scenariosFor } from '../engine/mission'
 import { scoreDesign } from '../engine/score'
 import { simulate } from '../engine/simulate'
-import type { Design } from '../engine/types'
+import type { Design, DesignNode } from '../engine/types'
 import { MISSIONS } from './index'
 import { pastebin } from './pastebin'
 import {
@@ -95,14 +95,62 @@ describe('reglas de Pastebin', () => {
   const failed = (design: Design, decisions = VALID_DECISIONS) =>
     pastebin.rules.filter((r) => !r.check(design, decisions)).map((r) => r.id)
 
+  const node = (id: string, kind: DesignNode['kind'], instances = 1): DesignNode => ({ id, kind, instances })
+  const edges = (...pairs: string[]) =>
+    pairs.map((pair) => {
+      const [from, to] = pair.split('>')
+      return { from, to }
+    })
+  const swapEdge = (design: Design, drop: string, add: string[]): Design => ({
+    ...design,
+    edges: [...design.edges.filter((e) => `${e.from}>${e.to}` !== drop), ...edges(...add)],
+  })
+
   it('un solo NoSQL no separa metadatos y contenido', () => {
     expect(failed(removeNode(withNosql(reference), 'objectStore'))).toEqual(['separar'])
   })
 
-  it('dos NoSQL distintos sí separan metadatos y contenido', () => {
+  it('dos NoSQL del mismo grupo no separan: el simulador los trata como shards', () => {
     const design = removeNode(withNosql(reference), 'objectStore')
-    const second = { id: 'contenido', kind: 'nosql' as const, instances: 3 }
-    expect(failed({ nodes: [...design.nodes, second], edges: [...design.edges, { from: 'web', to: 'contenido' }] })).toEqual([])
+    const second = node('contenido', 'nosql', 3)
+    expect(failed({ nodes: [...design.nodes, second], edges: [...design.edges, { from: 'web', to: 'contenido' }] })).toEqual(['separar'])
+  })
+
+  it('el contenido en NoSQL vale con los metadatos en SQL', () => {
+    const contenido = node('contenido', 'nosql', 3)
+    const design = removeNode(reference, 'objectStore')
+    expect(failed({ nodes: [...design.nodes, contenido], edges: [...design.edges, { from: 'web', to: 'contenido' }] })).toEqual([])
+  })
+
+  it('un almacén enlazado solo desde otro almacén no cuenta', () => {
+    const design = swapEdge(reference, 'web>sql', ['objectStore>sql'])
+    expect(failed(design)).toContain('separar')
+    expect(failed(design)).toContain('caducidad')
+  })
+
+  it('la cola no lleva las lecturas a los metadatos', () => {
+    const design: Design = {
+      nodes: [...reference.nodes, node('queue', 'queue')],
+      edges: [...swapEdge(reference, 'web>sql', ['web>queue', 'queue>worker']).edges],
+    }
+    expect(failed(design)).toContain('separar')
+  })
+
+  it('una lectura debe llegar a metadatos y contenido, no solo el conjunto del tráfico', () => {
+    const design: Design = {
+      nodes: [node('client', 'client'), node('a', 'web'), node('b', 'web'), node('sql', 'sql'), node('objectStore', 'objectStore'), node('batch', 'batch'), node('worker', 'worker')],
+      edges: edges('client>a', 'client>b', 'a>sql', 'b>objectStore', 'a>batch', 'worker>sql'),
+    }
+    expect(failed(design)).toEqual(['separar'])
+  })
+
+  it('las reglas no se cumplen con islas desconectadas', () => {
+    const island: Design = {
+      nodes: [node('client', 'client'), node('web', 'web'), node('sql', 'sql'), node('objectStore', 'objectStore'),
+        node('web2', 'web'), node('batch', 'batch'), node('sql2', 'sql'), node('worker', 'worker')],
+      edges: edges('client>web', 'web>sql', 'web>objectStore', 'web2>batch', 'worker>sql2'),
+    }
+    expect(failed(island)).toEqual(['estadisticas', 'caducidad'])
   })
 
   it('un almacén inalcanzable desde client no cuenta para separar', () => {
@@ -111,12 +159,47 @@ describe('reglas de Pastebin', () => {
   })
 
   it('enlaces exige contestar la generación', () => {
-    expect(failed(reference, {})).toEqual(['enlaces'])
+    expect(failed(reference, {})).toEqual(['enlaces', 'decisiones'])
+  })
+
+  it.each([
+    ['generacion', 'base64'],
+    ['longitud', '4'],
+    ['contenido', 'tabla'],
+  ])('una opción que no funciona en %s falla la regla de decisiones', (id, option) => {
+    expect(failed(reference, { ...VALID_DECISIONS, [id]: option })).toEqual(['decisiones'])
+    const stars = scoreDesign(pastebin, pastebin.variants[0], reference, { ...VALID_DECISIONS, [id]: option })
+    expect(stars).toMatchObject({ reliability: false, earned: 2 })
+  })
+
+  it('las reglas que dependen de decisiones son de esa fase', () => {
+    expect(pastebin.rules.filter((r) => r.phase === 'decisiones').map((r) => r.id)).toEqual(['enlaces', 'decisiones'])
   })
 
   it('estadisticas exige el lote detrás de los servidores', () => {
     const edges = reference.edges.map((e) => (e.to === 'batch' ? { from: 'sql', to: 'batch' } : e))
     expect(failed({ ...reference, edges })).toEqual(['estadisticas'])
+  })
+
+  it.each([
+    ['con una cola', ['web>queue', 'queue>batch']],
+    ['desde el almacén de objetos', ['objectStore>batch']],
+  ])('estadisticas acepta los logs %s', (_, add) => {
+    const queued = swapEdge(reference, 'web>batch', add)
+    const design = { ...queued, nodes: [...queued.nodes, node('queue', 'queue')] }
+    expect(failed(design)).toEqual([])
+  })
+
+  it('caducidad acepta un lote sobre los metadatos', () => {
+    const design = removeNode(swapEdge(reference, 'worker>sql', ['batch>sql']), 'worker')
+    expect(failed(design)).toEqual([])
+  })
+
+  it('varias instancias de API tras varios servidores web no pierden fiabilidad', () => {
+    const design = swapEdge(reference, 'web>sql', ['web>api', 'api>sql'])
+    const withApi = { ...design, nodes: [...design.nodes, node('api', 'api', 2)] }
+    expect(failed(withApi)).toEqual([])
+    expect(scoreDesign(pastebin, pastebin.variants[0], withApi, VALID_DECISIONS).failingDownIds).toEqual([])
   })
 
   const rename = (id: string) => (id === 'web' ? 'api' : id)
@@ -139,30 +222,26 @@ describe('reglas de Pastebin', () => {
     expect(failed({ ...reference, edges })).toEqual(['caducidad'])
   })
 
-  it('balanceo exige un lb delante de varias instancias', () => {
-    expect(failed(removeNode(reference, 'lb'))).toEqual(['balanceo'])
+  it('el reparto es comportamiento, no una regla', () => {
+    expect(pastebin.rules.map((r) => r.id)).not.toContain('balanceo')
+    expect(failed(removeNode(reference, 'lb'))).toEqual([])
+    const stars = scoreDesign(pastebin, pastebin.variants[0], removeNode(reference, 'lb'), VALID_DECISIONS)
+    expect(stars.failingDownIds).toEqual(['web'])
   })
 
-  it('balanceo también vale para varios nodos y para api', () => {
-    const apis: Design = {
-      nodes: [...reference.nodes, { id: 'a1', kind: 'api', instances: 1 }, { id: 'a2', kind: 'api', instances: 1 }],
-      edges: [...reference.edges, { from: 'web', to: 'a1' }, { from: 'web', to: 'a2' }],
-    }
-    expect(failed(apis)).toEqual(['balanceo'])
-    const balanced: Design = {
-      nodes: [...apis.nodes, { id: 'lb2', kind: 'lb', instances: 1 }],
-      edges: [
-        ...apis.edges.filter((e) => e.from !== 'web' || !e.to.startsWith('a')),
-        { from: 'web', to: 'lb2' },
-        { from: 'lb2', to: 'a1' },
-        { from: 'lb2', to: 'a2' },
-      ],
-    }
-    expect(failed(balanced)).toEqual([])
-  })
-
-  it('una sola instancia de web no necesita lb', () => {
+  it('una sola instancia de web no necesita lb para las reglas', () => {
     expect(failed(SINGLE_MACHINE)).toEqual([])
+  })
+})
+
+describe('decisiones durante el diseño', () => {
+  const [variant] = pastebin.variants
+  it('sin decisiones, la referencia conserva sus 3 estrellas provisionales', () => {
+    expect(scoreDesign(pastebin, variant, variant.reference, {}, 'diseno')).toMatchObject({ earned: 3, failedRules: [] })
+  })
+
+  it('al final, sin decisiones, pierde fiabilidad', () => {
+    expect(scoreDesign(pastebin, variant, variant.reference, {}).reliability).toBe(false)
   })
 })
 

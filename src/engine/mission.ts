@@ -1,3 +1,4 @@
+import { PIECES } from './components'
 import type { HintSet } from './hints'
 import type { Design, PieceKind, Scenario } from './types'
 
@@ -14,6 +15,7 @@ export type Rule = {
   id: string
   label: string
   noteUrl: string
+  phase: 'diseno' | 'decisiones'
   check: (design: Design, decisions: Record<string, string>) => boolean
 }
 export type Decision = {
@@ -75,6 +77,15 @@ export function scenariosFor(variant: Variant): Scenario[] {
       meanWriteRps,
     },
   ]
+}
+
+/** Orden en que se lanzan los escenarios: medio, pico, caída de cada pieza propia en el pico y evento de la misión. */
+export function runOrder(variant: Variant, design: Design): Scenario[] {
+  const [medio, pico, viral] = scenariosFor(variant)
+  const downs = design.nodes
+    .filter((n) => !PIECES[n.kind].managed)
+    .map((n) => ({ ...pico, id: `caida:${n.id}`, name: `Caída de ${PIECES[n.kind].label}`, down: n.id }))
+  return [medio, pico, ...downs, viral]
 }
 
 const millions = (value: number) => `${value / 1_000_000} millones`

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PIECES } from './components'
-import { answerFor, scenariosFor, type Mission, type Variant } from './mission'
+import { answerFor, runOrder, scenariosFor, type Mission, type Rule, type Variant } from './mission'
 import { scoreDesign } from './score'
 import { designCost } from './simulate'
 import type { Design, DesignNode, PieceKind } from './types'
@@ -62,6 +62,21 @@ describe('scenariosFor', () => {
   })
 })
 
+describe('runOrder', () => {
+  it('ordena medio, pico, caídas y viral, con las caídas sobre el pico', () => {
+    const run = runOrder(variant({ readRps: 40, writeRps: 4 }), fragile)
+    expect(run.map((s) => s.id)).toEqual(['medio', 'pico', 'caida:api', 'caida:sql', 'viral'])
+    expect(run[2]).toMatchObject({ readRps: 120, writeRps: 12, down: 'api', hotKeyShare: 0 })
+    expect(run[2].name).toContain('API')
+  })
+
+  it('no prueba la caída de client ni de piezas gestionadas', () => {
+    const ids = runOrder(variant(), fragile).filter((s) => s.down).map((s) => s.down)
+    expect(ids).not.toContain('client')
+    expect(ids).not.toContain('objectStore')
+  })
+})
+
 describe('scoreDesign', () => {
   it('da las 3 estrellas a un diseño que lo cumple todo', () => {
     expect(scoreDesign(mission(), variant(), redundant, {})).toEqual({
@@ -108,16 +123,39 @@ describe('scoreDesign', () => {
   })
 
   it('las reglas reciben las decisiones y su fallo quita la fiabilidad', () => {
-    const rule = (id: string, ok: boolean) => ({
+    const rule = (id: string, ok: boolean): Rule => ({
       id,
       label: id,
       noteUrl: '',
+      phase: 'diseno',
       check: (_: Design, decisions: Record<string, string>) => (decisions.a === 'si') === ok,
     })
     const result = scoreDesign(mission({ rules: [rule('r1', true), rule('r2', false)] }), variant(), redundant, { a: 'si' })
     expect(result.failedRules).toEqual(['r2'])
     expect(result.failingDownIds).toEqual([])
     expect(result.reliability).toBe(false)
+  })
+
+  describe('etapa', () => {
+    const rules: Rule[] = [
+      { id: 'd', label: 'd', noteUrl: '', phase: 'diseno', check: () => false },
+      { id: 'e', label: 'e', noteUrl: '', phase: 'decisiones', check: () => false },
+    ]
+
+    it('durante el diseño no evalúa las reglas de decisión', () => {
+      expect(scoreDesign(mission({ rules }), variant(), redundant, {}, 'diseno').failedRules).toEqual(['d'])
+    })
+
+    it('al final las evalúa todas, y es el valor por defecto', () => {
+      expect(scoreDesign(mission({ rules }), variant(), redundant, {}, 'final').failedRules).toEqual(['d', 'e'])
+      expect(scoreDesign(mission({ rules }), variant(), redundant, {}).failedRules).toEqual(['d', 'e'])
+    })
+
+    it('sin reglas de diseño fallidas conserva la fiabilidad durante el diseño', () => {
+      const onlyDecisions = mission({ rules: rules.filter((r) => r.phase === 'decisiones') })
+      expect(scoreDesign(onlyDecisions, variant(), redundant, {}, 'diseno').reliability).toBe(true)
+      expect(scoreDesign(onlyDecisions, variant(), redundant, {}, 'final').reliability).toBe(false)
+    })
   })
 
   it('un diseño inválido no gana estrellas ni lanza', () => {
