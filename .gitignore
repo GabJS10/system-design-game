@@ -1,0 +1,9 @@
+node_modules
+dist
+*.local
+*.log
+.DS_Store
+.superpowers/
+.vercel/
+test-results/
+playwright-report/
