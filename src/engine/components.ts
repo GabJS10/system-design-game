@@ -21,7 +21,7 @@ export const PIECES: Record<PieceKind, PieceSpec> = {
   cache: piece('cache', 'Caché en memoria', 50_000, 1, 200, false, 'Guarda datos calientes en RAM.'),
   sql: piece('sql', 'Base SQL', 1_200, 10, 500, false, 'Base relacional; atiende escrituras y lecturas.'),
   replica: piece('replica', 'Réplica de lectura', 1_200, 10, 400, false, 'Copia de la base SQL para repartir lecturas.'),
-  nosql: piece('nosql', 'Base NoSQL', 1_500, 8, 400, false, 'Almacén distribuido consultado por clave.'),
+  nosql: piece('nosql', 'Base NoSQL', 1_500, 8, 450, false, 'Almacén distribuido consultado por clave.'),
   objectStore: piece('objectStore', 'Almacenamiento de objetos', 5_000, 20, 150, true, 'Guarda archivos y contenido grande.'),
   queue: piece('queue', 'Cola', 20_000, 2, 100, false, 'Separa el trabajo de la petición que lo origina.'),
   worker: piece('worker', 'Worker', 200, 50, 100, false, 'Procesa trabajo en segundo plano.'),

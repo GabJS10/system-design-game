@@ -17,7 +17,7 @@ export function removeNode(design: Design, id: string): Design {
 
 export function withNosql(design: Design): Design {
   const rename = (id: string) => (id === 'sql' ? 'nosql' : id)
-  const nosql: DesignNode = { id: 'nosql', kind: 'nosql', instances: 3 }
+  const nosql: DesignNode = { id: 'nosql', kind: 'nosql', instances: 2 }
   return {
     nodes: [...design.nodes.filter((n) => n.kind !== 'sql' && n.kind !== 'replica'), nosql],
     edges: design.edges

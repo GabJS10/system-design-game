@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { scenariosFor } from '../engine/mission'
 import { scoreDesign } from '../engine/score'
-import { simulate } from '../engine/simulate'
+import { designCost, simulate } from '../engine/simulate'
 import type { Design, DesignNode } from '../engine/types'
 import { MISSIONS } from './index'
 import { pastebin } from './pastebin'
@@ -40,7 +40,13 @@ describe.each(pastebin.variants)('calibración de la variante $id', (variant) =>
     }
   })
 
-  it('NoSQL de 3 instancias en lugar de SQL y réplica es igual de válido', () => {
+  it('el presupuesto da poco margen sobre la referencia', () => {
+    expect(designCost(reference)).toBeLessThanOrEqual(variant.budget)
+    expect(variant.budget).toBeLessThanOrEqual(designCost(reference) * 1.1)
+  })
+
+  it('NoSQL de 2 instancias en lugar de SQL y réplica es igual de válido y no sale más barato', () => {
+    expect(designCost(withNosql(reference))).toBe(designCost(reference))
     expect(score(withNosql(reference))).toMatchObject({ earned: 3, failedRules: [] })
   })
 
@@ -86,6 +92,37 @@ describe.each(pastebin.variants)('calibración de la variante $id', (variant) =>
       expect(before.sql.readRps).toBeGreaterThan(0)
       expect(after.sql.writeRps).toBeCloseTo(before.sql.writeRps + before.sql.readRps)
       expect(after.replica.writeRps).toBeGreaterThan(before.replica.writeRps)
+    }
+  })
+})
+
+describe('presupuestos entre variantes', () => {
+  const [base, lecturas, escrituras] = pastebin.variants
+  const stars = (design: Design, variant: (typeof pastebin.variants)[number]) =>
+    scoreDesign(pastebin, variant, design, VALID_DECISIONS)
+
+  it('la referencia de lecturas pierde coste en las otras variantes', () => {
+    expect(stars(lecturas.reference, base)).toMatchObject({ cost: false, earned: 2 })
+    expect(stars(lecturas.reference, escrituras)).toMatchObject({ cost: false, earned: 2 })
+  })
+
+  it('añadir DNS y CDN a la referencia de base por si acaso pierde coste', () => {
+    const entry = ['dns', 'cdn'] as const
+    const padded: Design = {
+      nodes: [...base.reference.nodes, ...entry.map((kind) => ({ id: kind, kind, instances: 1 }))],
+      edges: [
+        ...base.reference.edges.filter((e) => e.from !== 'client'),
+        { from: 'client', to: 'dns' },
+        { from: 'dns', to: 'cdn' },
+        { from: 'cdn', to: 'lb' },
+      ],
+    }
+    expect(stars(padded, base)).toMatchObject({ performance: true, reliability: true, cost: false })
+  })
+
+  it('ninguna referencia consigue 3 estrellas en las tres variantes', () => {
+    for (const { reference } of pastebin.variants) {
+      expect(pastebin.variants.filter((v) => stars(reference, v).earned === 3).length).toBeLessThan(3)
     }
   })
 })

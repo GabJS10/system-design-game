@@ -292,7 +292,7 @@ export const pastebin: Mission = {
       writeRps: 4,
       readRps: 40,
       storageGbPerMonth: 12.7,
-      budget: 2500,
+      budget: 2090,
       reference: reference(2, false),
     },
     {
@@ -302,7 +302,7 @@ export const pastebin: Mission = {
       writeRps: 4,
       readRps: 400,
       storageGbPerMonth: 12.7,
-      budget: 2800,
+      budget: 2420,
       reference: reference(2, true),
     },
     {
@@ -312,7 +312,7 @@ export const pastebin: Mission = {
       writeRps: 40,
       readRps: 200,
       storageGbPerMonth: 127,
-      budget: 2600,
+      budget: 2150,
       reference: reference(3, false),
     },
   ],
