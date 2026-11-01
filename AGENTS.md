@@ -40,6 +40,7 @@ Requiere Node 24 o superior.
 - Trabaja en ramas, no en `main`.
 - Cada task va en su propio worktree bajo `.claude/worktrees/`, creado desde `feat/primera-entrega`. Se integra en esa rama con las pruebas y la compilación en verde.
 - El plan y el registro de progreso se actualizan después de integrar, en el checkout principal.
+- GitHub Actions ejecuta pruebas y compilación en cada push: al integrar una tanda, sube la rama y comprueba que CI pase.
 - `node_modules` es un enlace compartido entre worktrees: cambia dependencias solo en el checkout principal.
 - Los mensajes de commit no llevan atribución a Claude: sin `Co-Authored-By` ni menciones similares.
 - Pide confirmación antes de publicar en Vercel.
