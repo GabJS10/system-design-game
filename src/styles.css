@@ -1,0 +1,46 @@
+:root {
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --text: #1f2430;
+  --muted: #5a6172;
+  --border: #c9ccd4;
+  --accent: #2b5fc7;
+  --lesson: #e8f0fb;
+  --mission: #fdf1dc;
+  --warn-bg: #fff3cd;
+  --warn-text: #5c4300;
+  --due: #a33a00;
+  --disabled: #6b7080;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, sans-serif; }
+a { color: var(--accent); }
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.page { max-width: 40rem; margin: 3rem auto; padding: 0 1rem; }
+
+.map-page { display: flex; flex-direction: column; height: 100vh; }
+.map-header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1.5rem; background: var(--surface); border-bottom: 1px solid var(--border); }
+.map-header h1 { margin: 0; font-size: 1.25rem; }
+.actions { display: flex; gap: 0.5rem; }
+.actions button { padding: 0.4rem 0.9rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+.actions button:hover { border-color: var(--accent); }
+
+.banner { margin: 0; padding: 0.6rem 1.5rem; background: var(--lesson); }
+.banner-warning { background: var(--warn-bg); color: var(--warn-text); }
+
+.map { flex: 1; min-height: 0; }
+.react-flow__handle { visibility: hidden; }
+
+.node { pointer-events: auto; display: flex; flex-direction: column; gap: 0.15rem; width: 180px; padding: 0.55rem 0.7rem; text-align: left; color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
+.node-leccion { background: var(--lesson); }
+.node-mision { background: var(--mission); }
+.node[data-available='true']:hover { border-color: var(--accent); }
+.node[aria-disabled='true'] { color: var(--disabled); cursor: default; border-style: dashed; background: var(--surface); }
+.node-kind { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.node-title { font-weight: 600; }
+.node-status { font-size: 0.85rem; color: var(--muted); }
+.node-due { font-size: 0.85rem; font-weight: 700; color: var(--due); }
+.react-flow__edge-path { stroke: var(--border); stroke-width: 1.5; }
