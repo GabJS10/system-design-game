@@ -344,9 +344,9 @@ Creamos el lienzo donde el jugador construye su arquitectura: añade, conecta, c
 
 Se pueden añadir, conectar, borrar y configurar piezas (instancias y `visitCounter`). Solo hay un `client`, creado de inicio y sin borrado. Con `result`, cada pieza muestra su utilización; una saturada se ve en rojo y las aristas animan solo si hay carga. La paleta siempre muestra las 14 piezas en el mismo orden en las misiones.
 
-- [ ] **Step 1: Implementar el lienzo como componente controlado.** Evitar que el arrastre de posiciones cuente como cambio útil: la posición se guarda aparte en `DesignNode` mediante `x` e `y` opcionales, añadidos a `types.ts`, y `simulate` los ignora.
-- [ ] **Step 2: Comprobar con `npm run build` y en el navegador** añadir, conectar y configurar piezas.
-- [ ] **Step 3: Commit** `feat: lienzo de arquitectura`.
+- [x] **Step 1: Implementar el lienzo como componente controlado.** Evitar que el arrastre de posiciones cuente como cambio útil: la posición se guarda aparte en `DesignNode` mediante `x` e `y` opcionales, añadidos a `types.ts`, y `simulate` los ignora.
+- [x] **Step 2: Comprobar con `npm run build` y en el navegador** añadir, conectar y configurar piezas.
+- [x] **Step 3: Commit** `feat: lienzo de arquitectura`.
 
 ### Task 9: Informe y estimación
 
@@ -363,10 +363,10 @@ Al abrir una misión sin intento, se crea uno con `pickVariant`. El informe solo
 
 El panel de ayuda ofrece una pista cuando `isStuck` es verdadero, sin mostrarla hasta que el jugador acepte, y siempre tiene un botón "Pedir pista". Advierte el coste antes de abrir los niveles 2 y 3.
 
-- [ ] **Step 1: Implementar `HintPanel` y `Clock`.** El reloj cuenta desde `startedAt`; al pasar de 45 minutos sigue contando en otro color.
-- [ ] **Step 2: Implementar las fases.** Cada acción persiste con `update`.
-- [ ] **Step 3: Comprobar con `npm run build` y en el navegador** que se avanza hasta la fase de diseño con un número bien escrito y que uno erróneo lo impide.
-- [ ] **Step 4: Commit** `feat: fases de informe y estimación`.
+- [x] **Step 1: Implementar `HintPanel` y `Clock`.** El reloj cuenta desde `startedAt`; al pasar de 45 minutos sigue contando en otro color.
+- [x] **Step 2: Implementar las fases.** Cada acción persiste con `update`.
+- [x] **Step 3: Comprobar con `npm run build` y en el navegador** que se avanza hasta la fase de diseño con un número bien escrito y que uno erróneo lo impide.
+- [x] **Step 4: Commit** `feat: fases de informe y estimación`.
 
 ### Task 10: Simulación, decisiones y comparación
 
