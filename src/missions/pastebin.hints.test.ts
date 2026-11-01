@@ -39,7 +39,8 @@ describe('pistas de Pastebin', () => {
     expect(new Set(pastebin.hints.map((h) => h.key)).size).toBe(pastebin.hints.length)
     for (const hint of pastebin.hints) {
       expect(hint.texts.every((t) => t.trim().length > 0)).toBe(true)
-      if (hint.lessonId) expect(MAP_NODES.some((n) => n.type === 'leccion' && n.id === hint.lessonId)).toBe(true)
+      // La pista enlaza a la lección que explica el fallo, y esa lección nunca puede estar en "Próximamente".
+      if (hint.lessonId) expect(MAP_NODES.some((n) => n.type === 'leccion' && n.available && n.id === hint.lessonId)).toBe(true)
     }
   })
 
