@@ -178,7 +178,9 @@ export function compareDesign(
   }
 
   // Las reglas de decisión ya salen arriba, una diferencia por decisión.
-  for (const rule of mission.rules.filter((r) => r.phase === 'diseno' && !r.check(design, decisions))) {
+  // Las reglas recorren el grafo y solo admiten diseños válidos: un ciclo las dejaría sin fin.
+  const rules = validateDesign(design).length === 0 ? mission.rules.filter((r) => r.phase === 'diseno') : []
+  for (const rule of rules.filter((r) => !r.check(design, decisions))) {
     diffs.push({
       id: `regla:${rule.id}`,
       category: 'pieza',
@@ -205,6 +207,17 @@ export function compareDesign(
       category: 'pieza',
       title: `Caída de ${PIECES[kind].label}`,
       detail: 'El servicio no sobrevive a la caída de esta pieza.',
+      noteUrl: mission.failureNoteUrl,
+    })
+  }
+
+  const cost = designCost(design)
+  if (cost > variant.budget) {
+    diffs.push({
+      id: 'coste',
+      category: 'pieza',
+      title: 'Presupuesto superado',
+      detail: `Tu diseño cuesta ${cost} al mes y el presupuesto es de ${variant.budget}.`,
       noteUrl: mission.failureNoteUrl,
     })
   }

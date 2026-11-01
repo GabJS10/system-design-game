@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { pastebin } from '../missions/pastebin'
-import { SINGLE_MACHINE, VALID_DECISIONS, removeNode, withNosql, withVisitCounter, withoutPopularReads } from '../missions/pastebin.fixtures'
+import { SINGLE_MACHINE, VALID_DECISIONS, oversized, removeNode, withNosql, withVisitCounter, withoutPopularReads } from '../missions/pastebin.fixtures'
 import { compareDesign, scoreDesign, type AttemptFacts } from './score'
+import { designCost } from './simulate'
 import type { Design } from './types'
 
 const variant = pastebin.variants[0]
@@ -88,6 +89,21 @@ describe('compareDesign', () => {
       expect(diffs[0]).toMatchObject({ category: 'pieza', title: 'Paste viral' })
     })
 
+    it('perder solo el coste explica el presupuesto superado', () => {
+      const design = oversized(reference)
+      const stars = scoreDesign(pastebin, variant, design, VALID_DECISIONS)
+      expect(stars).toMatchObject({ performance: true, reliability: true, cost: false })
+      const diffs = compare(design).filter((d) => d.id === 'coste')
+      expect(diffs).toEqual([
+        expect.objectContaining({ category: 'pieza', noteUrl: expect.any(String), detail: expect.stringContaining(String(variant.budget)) }),
+      ])
+      expect(diffs[0].detail).toContain(String(designCost(design)))
+    })
+
+    it('dentro del presupuesto no hay diferencia de coste', () => {
+      expect(compare().map((d) => d.id)).not.toContain('coste')
+    })
+
     it('agrupa por tipo las caídas de varias piezas', () => {
       const two: Design = {
         nodes: [...SINGLE_MACHINE.nodes, { id: 'sql2', kind: 'sql', instances: 1 }],
@@ -145,6 +161,28 @@ describe('compareDesign', () => {
 
     it('el lote que no toca los metadatos no cubre la limpieza', () => {
       expect(compare(removeNode(reference, 'worker')).find((d) => d.id === 'rol:limpieza')).toMatchObject({ category: 'pieza' })
+    })
+
+    it('un ciclo no lanza, omite las reglas y conserva lo demás', () => {
+      const cycle: Design = {
+        nodes: [
+          { id: 'client', kind: 'client', instances: 1 },
+          { id: 'a', kind: 'web', instances: 1 },
+          { id: 'b', kind: 'web', instances: 1 },
+          { id: 'sql', kind: 'sql', instances: 1 },
+        ],
+        edges: [
+          { from: 'client', to: 'a' },
+          { from: 'a', to: 'b' },
+          { from: 'b', to: 'a' },
+          { from: 'b', to: 'sql' },
+        ],
+      }
+      const stars = scoreDesign(pastebin, variant, cycle, VALID_DECISIONS)
+      const facts = { ...perfectFacts, askedQuestionIds: [] }
+      const ids = compareDesign(pastebin, variant, cycle, { ...VALID_DECISIONS, longitud: '4' }, facts, stars).map((d) => d.id)
+      expect(ids.filter((id) => id.startsWith('regla:'))).toEqual([])
+      expect(ids).toEqual(expect.arrayContaining(['pregunta:volumen', 'rol:reparto', 'decision:longitud']))
     })
 
     it('un diseño inválido no lanza y no cubre nada', () => {
