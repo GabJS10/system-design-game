@@ -2,6 +2,7 @@ import { MAP_NODES } from './content'
 import { parseRoute } from './game/route'
 import { GameProvider, useRoute } from './game/store'
 import MapScreen from './game/map/MapScreen'
+import MissionScreen from './game/mission/MissionScreen'
 
 function UnderConstruction({ id }: { id: string }) {
   const title = MAP_NODES.find((n) => n.id === id)?.title ?? id
@@ -16,7 +17,8 @@ function UnderConstruction({ id }: { id: string }) {
 
 function Router() {
   const route = parseRoute(useRoute())
-  return route.screen === 'mapa' ? <MapScreen /> : <UnderConstruction id={route.id} />
+  if (route.screen === 'mapa') return <MapScreen />
+  return route.screen === 'mision' ? <MissionScreen key={route.id} missionId={route.id} /> : <UnderConstruction id={route.id} />
 }
 
 export default function App() {
