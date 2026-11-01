@@ -11,6 +11,8 @@
   --warn-text: #5c4300;
   --due: #a33a00;
   --disabled: #6b7080;
+  --danger: #b3261e;
+  --danger-bg: #fdecea;
 }
 
 * { box-sizing: border-box; }
@@ -32,7 +34,7 @@ button { font: inherit; cursor: pointer; }
 .banner-warning { background: var(--warn-bg); color: var(--warn-text); }
 
 .map { flex: 1; min-height: 0; }
-.react-flow__handle { visibility: hidden; }
+.map .react-flow__handle { visibility: hidden; }
 
 .node { pointer-events: auto; display: flex; flex-direction: column; gap: 0.15rem; width: 180px; padding: 0.55rem 0.7rem; text-align: left; color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
 .node-leccion { background: var(--lesson); }
@@ -44,3 +46,43 @@ button { font: inherit; cursor: pointer; }
 .node-status { font-size: 0.85rem; color: var(--muted); }
 .node-due { font-size: 0.85rem; font-weight: 700; color: var(--due); }
 .react-flow__edge-path { stroke: var(--border); stroke-width: 1.5; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.canvas-layout { display: grid; grid-template-columns: 16rem minmax(0, 1fr) 20rem; height: 100%; min-height: 32rem; background: var(--bg); }
+.canvas-layout h2 { margin: 0 0 0.4rem; font-size: 1rem; }
+.canvas { min-width: 0; min-height: 0; }
+.palette, .side { overflow-y: auto; padding: 0.75rem; background: var(--surface); }
+.palette { border-right: 1px solid var(--border); }
+.side { border-left: 1px solid var(--border); }
+.palette ul, .piece-list, .links, .errors { margin: 0; padding: 0; list-style: none; }
+.palette li + li { margin-top: 0.4rem; }
+.palette button, .side button, .side select, .side input[type='number'] { padding: 0.35rem 0.6rem; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+.palette button { display: flex; flex-direction: column; width: 100%; text-align: left; }
+.palette button:hover:enabled, .side button:hover:enabled { border-color: var(--accent); }
+button:disabled, fieldset:disabled button { color: var(--disabled); cursor: not-allowed; }
+.palette-name { font-weight: 600; }
+.palette-desc { font-size: 0.8rem; color: var(--muted); }
+.side section { margin-bottom: 1rem; }
+.side-note { margin: 0 0 0.75rem; padding: 0.5rem 0.6rem; background: var(--warn-bg); color: var(--warn-text); border-radius: 6px; }
+.piece-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.piece-list button[aria-pressed='true'] { border-color: var(--accent); background: var(--lesson); }
+.selected { margin: 0; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; }
+.selected label { display: flex; flex-direction: column; gap: 0.2rem; margin-bottom: 0.5rem; }
+.selected .check { flex-direction: row; align-items: center; gap: 0.4rem; }
+.connect { display: flex; align-items: flex-end; gap: 0.4rem; margin-bottom: 0.5rem; }
+.connect label { flex: 1; margin: 0; }
+.links li { display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem; font-size: 0.9rem; }
+.error { color: var(--danger); font-weight: 600; }
+.danger { color: var(--danger); border-color: var(--danger); }
+.errors { color: var(--danger); }
+.errors li { margin-bottom: 0.4rem; }
+.errors-nodes { color: var(--muted); }
+
+.piece { display: flex; flex-direction: column; gap: 0.1rem; width: 170px; padding: 0.5rem 0.7rem; color: var(--text); background: var(--surface); border: 2px solid var(--border); border-radius: 8px; }
+.piece[data-selected='true'] { border-color: var(--accent); }
+.piece[data-saturated='true'] { border-color: var(--danger); background: var(--danger-bg); }
+.piece-name { font-weight: 600; }
+.piece-id, .piece-info { font-size: 0.8rem; color: var(--muted); }
+.piece-load { font-size: 0.85rem; }
+.piece[data-saturated='true'] .piece-load { color: var(--danger); }

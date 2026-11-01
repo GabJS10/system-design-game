@@ -28,6 +28,13 @@ const basic: Design = {
   edges: edges('client>api', 'api>sql'),
 }
 
+describe('posición en el lienzo', () => {
+  it('x e y no cambian el resultado', () => {
+    const moved: Design = { ...basic, nodes: basic.nodes.map((n, i) => ({ ...n, x: i * 100, y: -i * 7 })) }
+    expect(simulate(moved, scenario())).toEqual(simulate(basic, scenario()))
+  })
+})
+
 describe('reparto de la carga', () => {
   it('lleva las lecturas de client a sql', () => {
     expect(simulate(basic, scenario()).nodes.sql.readRps).toBe(100)

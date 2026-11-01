@@ -25,7 +25,8 @@ export type PieceSpec = {
   description: string
 }
 
-export type DesignNode = { id: string; kind: PieceKind; instances: number; visitCounter?: boolean }
+// `x` e `y` solo son posición en el lienzo: la simulación y la evaluación los ignoran.
+export type DesignNode = { id: string; kind: PieceKind; instances: number; visitCounter?: boolean; x?: number; y?: number }
 export type DesignEdge = { from: string; to: string }
 export type Design = { nodes: DesignNode[]; edges: DesignEdge[] }
 

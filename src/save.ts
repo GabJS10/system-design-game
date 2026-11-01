@@ -39,7 +39,8 @@ const isBool = (v: unknown): v is boolean => typeof v === 'boolean'
 function isDesign(v: unknown): v is Design {
   if (!isObj(v)) return false
   const valid = isArr(v.nodes, (n): n is object => isObj(n) && isStr(n.id) && isStr(n.kind) && Object.hasOwn(PIECES, n.kind)
-      && isNum(n.instances) && (n.visitCounter === undefined || isBool(n.visitCounter)))
+      && isNum(n.instances) && (n.visitCounter === undefined || isBool(n.visitCounter))
+      && (n.x === undefined || isNum(n.x)) && (n.y === undefined || isNum(n.y)))
     && isArr(v.edges, (e): e is object => isObj(e) && isStr(e.from) && isStr(e.to))
   if (!valid) return false
   // La simulación asume ids únicos y aristas con extremos existentes.

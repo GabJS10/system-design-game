@@ -34,6 +34,13 @@ describe('loadSave y writeSave', () => {
     writeSave(s, save)
     expect(loadSave(s)).toEqual({ save, warning: null })
   })
+  it('conserva la posición x e y de los nodos', () => {
+    const s = fakeStorage()
+    const design = { nodes: [{ id: 'c', kind: 'client' as const, instances: 1, x: 12.5, y: -40 }], edges: [] }
+    const save: Save = { ...empty, current: attempt({ design }) }
+    writeSave(s, save)
+    expect(loadSave(s)).toEqual({ save, warning: null })
+  })
   it('sin datos devuelve un save vacío sin aviso', () => {
     expect(loadSave(fakeStorage())).toEqual({ save: empty, warning: null })
   })
@@ -58,6 +65,8 @@ describe('loadSave y writeSave', () => {
     ['estrellas negativas', { ...empty, attempts: [done('2026-01-02T00:00:00.000Z', { result: { stars: -1, finishedAt: '2026-01-02T00:00:00.000Z' } })] }],
     ['estrellas decimales', { ...empty, attempts: [done('2026-01-02T00:00:00.000Z', { result: { stars: 1.5, finishedAt: '2026-01-02T00:00:00.000Z' } })] }],
     ['estrellas por encima de 3', { ...empty, attempts: [done('2026-01-02T00:00:00.000Z', { result: { stars: 4, finishedAt: '2026-01-02T00:00:00.000Z' } })] }],
+    ['posición x no numérica', { ...empty, current: attempt({ design: { nodes: [{ id: 'c', kind: 'client', instances: 1, x: 'a' }], edges: [] } as never }) }],
+    ['posición y nula (así se guarda un NaN)', { ...empty, current: attempt({ design: { nodes: [{ id: 'c', kind: 'client', instances: 1, y: null }], edges: [] } as never }) }],
     ['nivel de pista inválido', { ...empty, current: attempt({ hints: [{ key: 'k', level: 9 }] as never }) }],
   ])('forma incorrecta (%s) se trata como corrupto', (_n, bad) => {
     const raw = JSON.stringify(bad)
