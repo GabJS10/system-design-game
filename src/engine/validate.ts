@@ -1,7 +1,20 @@
 import type { Design, DesignEdge, DesignError, PieceKind } from './types'
 
 const STORAGE: PieceKind[] = ['sql', 'nosql', 'objectStore']
+export const DATA: PieceKind[] = ['sql', 'replica', 'nosql', 'objectStore']
+export const OFF_REQUEST: PieceKind[] = ['queue', 'worker', 'batch', 'warehouse']
 const MAX_INSTANCES = 100
+
+/** Piezas que toca una petición: el camino se detiene en los datos y en lo que trabaja después. */
+export function requestReach({ nodes, edges }: Design): Set<string> {
+  const stops = new Set(nodes.filter((n) => DATA.includes(n.kind) || OFF_REQUEST.includes(n.kind)).map((n) => n.id))
+  const reached = new Set(nodes.filter((n) => n.kind === 'client').map((n) => n.id))
+  for (const id of reached) {
+    if (stops.has(id)) continue
+    for (const edge of edges) if (edge.from === id) reached.add(edge.to)
+  }
+  return reached
+}
 
 // Quita repetidamente lo que no tiene entradas o salidas: solo sobreviven los ciclos.
 function nodesInCycles(ids: string[], edges: DesignEdge[]): string[] {
@@ -24,8 +37,22 @@ export function validateDesign(design: Design): DesignError[] {
   const { nodes, edges } = design
   const errors: DesignError[] = []
 
-  if (!nodes.some((n) => n.kind === 'client')) {
+  const clients = nodes.filter((n) => n.kind === 'client')
+  if (clients.length === 0) {
     errors.push({ code: 'no-client', message: 'Falta el nodo de usuarios: sin él no llega tráfico.', nodeIds: [] })
+  }
+  if (clients.length > 1) {
+    errors.push({ code: 'many-clients', message: 'Solo puede haber un nodo de usuarios.', nodeIds: clients.map((n) => n.id) })
+  }
+
+  const ids = new Set(nodes.map((n) => n.id))
+  const dangling = edges.filter((e) => !ids.has(e.from) || !ids.has(e.to))
+  if (dangling.length > 0) {
+    errors.push({
+      code: 'dangling-edge',
+      message: 'Hay conexiones que apuntan a una pieza que no existe.',
+      nodeIds: [...new Set(dangling.flatMap((e) => [e.from, e.to]).filter((id) => ids.has(id)))],
+    })
   }
 
   const cycle = nodesInCycles(nodes.map((n) => n.id), edges)
@@ -40,8 +67,16 @@ export function validateDesign(design: Design): DesignError[] {
     errors.push({ code: 'orphan', message: 'Hay piezas sin conectar.', nodeIds: orphans })
   }
 
-  if (!nodes.some((n) => STORAGE.includes(n.kind))) {
+  const storage = nodes.filter((n) => STORAGE.includes(n.kind))
+  const reached = requestReach(design)
+  if (storage.length === 0) {
     errors.push({ code: 'no-storage', message: 'Falta un lugar donde guardar los datos.', nodeIds: [] })
+  } else if (clients.length > 0 && !storage.some((n) => reached.has(n.id))) {
+    errors.push({
+      code: 'unreachable-storage',
+      message: 'Las peticiones de los usuarios no llegan a ningún almacenamiento.',
+      nodeIds: storage.map((n) => n.id),
+    })
   }
 
   const badInstances = nodes

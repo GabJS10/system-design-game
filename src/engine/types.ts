@@ -30,7 +30,15 @@ export type DesignEdge = { from: string; to: string }
 export type Design = { nodes: DesignNode[]; edges: DesignEdge[] }
 
 export type DesignError = {
-  code: 'no-client' | 'cycle' | 'orphan' | 'no-storage' | 'bad-instances'
+  code:
+    | 'no-client'
+    | 'many-clients'
+    | 'dangling-edge'
+    | 'cycle'
+    | 'orphan'
+    | 'no-storage'
+    | 'unreachable-storage'
+    | 'bad-instances'
   message: string
   nodeIds: string[]
 }

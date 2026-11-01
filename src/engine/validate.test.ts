@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Design, DesignNode } from './types'
-import { validateDesign } from './validate'
+import { requestReach, validateDesign } from './validate'
 
 const node = (id: string, kind: DesignNode['kind'], instances = 1): DesignNode => ({ id, kind, instances })
 
@@ -78,6 +78,59 @@ describe('validateDesign', () => {
       nodes: valid.nodes.map((n) => (n.id === 'api' ? { ...n, instances: 100 } : n)),
     }
     expect(validateDesign(design)).toEqual([])
+  })
+
+  it('rechaza un almacenamiento al que no llega ninguna petición', () => {
+    const design: Design = {
+      nodes: [node('client', 'client'), node('dns', 'dns'), node('worker', 'worker'), node('db', 'sql')],
+      edges: [
+        { from: 'client', to: 'dns' },
+        { from: 'worker', to: 'db' },
+      ],
+    }
+    const error = validateDesign(design).find((e) => e.code === 'unreachable-storage')
+    expect(error?.message).toMatch(/usuarios/)
+    expect(error?.nodeIds).toEqual(['db'])
+  })
+
+  it.each([
+    ['otro almacenamiento', 'objectStore', ['client>store', 'store>db']],
+    ['una cola y su worker', 'queue', ['client>store', 'store>worker', 'worker>db']],
+  ])('no cruza %s para llegar al almacenamiento', (_, kind, pairs) => {
+    const design: Design = {
+      nodes: [node('client', 'client'), node('store', kind as DesignNode['kind']), node('worker', 'worker'), node('db', 'sql')],
+      edges: pairs.map((p) => ({ from: p.split('>')[0], to: p.split('>')[1] })),
+    }
+    const reached = requestReach(design)
+    expect(reached.has('db')).toBe(false)
+    expect(reached.has('store')).toBe(true)
+  })
+
+  it('una cola no comunica una petición con el almacenamiento', () => {
+    const design: Design = {
+      nodes: [node('client', 'client'), node('queue', 'queue'), node('worker', 'worker'), node('db', 'sql')],
+      edges: [
+        { from: 'client', to: 'queue' },
+        { from: 'queue', to: 'worker' },
+        { from: 'worker', to: 'db' },
+      ],
+    }
+    expect(codes(design)).toContain('unreachable-storage')
+  })
+
+  it('rechaza una arista con un extremo inexistente', () => {
+    const design: Design = { ...valid, edges: [...valid.edges, { from: 'api', to: 'nada' }] }
+    const error = validateDesign(design).find((e) => e.code === 'dangling-edge')
+    expect(error?.nodeIds).toEqual(['api'])
+  })
+
+  it('rechaza más de un nodo de usuarios', () => {
+    const design: Design = {
+      nodes: [...valid.nodes, node('otro', 'client')],
+      edges: [...valid.edges, { from: 'otro', to: 'api' }],
+    }
+    const error = validateDesign(design).find((e) => e.code === 'many-clients')
+    expect(error?.nodeIds).toEqual(['client', 'otro'])
   })
 
   it('devuelve mensajes para el jugador', () => {

@@ -14,8 +14,8 @@ const edges = (...pairs: string[]) =>
   })
 
 const redundant: Design = {
-  nodes: [node('client'), node('api', 'api', 2), node('sql'), node('replica')],
-  edges: edges('client>api', 'api>sql', 'sql>replica'),
+  nodes: [node('client'), node('lb'), node('api', 'api', 2), node('sql'), node('replica')],
+  edges: edges('client>lb', 'lb>api', 'api>sql', 'sql>replica'),
 }
 
 const fragile: Design = {

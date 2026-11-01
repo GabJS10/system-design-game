@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PIECES } from './components'
-import { designCost, simulate } from './simulate'
+import { designCost, isBalanced, simulate } from './simulate'
 import type { Design, DesignNode, PieceKind, Scenario } from './types'
 
 const node = (id: string, kind: PieceKind = id as PieceKind, instances = 1): DesignNode => ({ id, kind, instances })
@@ -288,8 +288,116 @@ describe('camino de la petición', () => {
   })
 })
 
+describe('clave caliente', () => {
+  const hot = scenario({ readRps: 1000, hotKeyShare: 0.9 })
+  const withStore = (...pieces: DesignNode[]): Design => ({
+    nodes: [node('client'), node('api', 'api', 10), ...pieces],
+    edges: pieces.map((p) => ({ from: 'api', to: p.id })).concat(edges('client>api')),
+  })
+
+  it('no reparte la parte caliente entre instancias de datos', () => {
+    const { utilization } = simulate(withStore(node('nosql', 'nosql', 4)), hot).nodes.nosql
+    expect(utilization).toBeCloseTo((2 * 900) / PIECES.nosql.capacityRps + 100 / (PIECES.nosql.capacityRps * 4))
+  })
+
+  it('sí reparte la parte fría y las escrituras', () => {
+    const { utilization } = simulate(withStore(node('nosql', 'nosql', 4)), { ...hot, hotKeyShare: 0, writeRps: 100 }).nodes.nosql
+    expect(utilization).toBeCloseTo(1100 / (PIECES.nosql.capacityRps * 4))
+  })
+
+  it('más instancias no salvan una clave caliente', () => {
+    const { saturated } = simulate(withStore(node('nosql', 'nosql', 100)), hot).nodes.nosql
+    expect(saturated).toBe(true)
+  })
+
+  it('tampoco se reparte entre nodos del mismo grupo', () => {
+    const { nodes } = simulate(withStore(node('a', 'nosql'), node('b', 'nosql')), hot)
+    expect(nodes.a.readRps).toBe(500)
+    expect(nodes.a.saturated).toBe(true)
+    expect(nodes.b.saturated).toBe(true)
+  })
+
+  it('tampoco se reparte entre réplicas', () => {
+    const { nodes } = simulate(withStore(node('sql'), node('r1', 'replica'), node('r2', 'replica')), hot)
+    expect(nodes.r1.saturated).toBe(true)
+  })
+
+  it('un paso previo reduce también la parte caliente', () => {
+    const design = withStore(node('cache'), node('nosql'))
+    expect(simulate(design, hot).nodes.nosql.saturated).toBe(false)
+  })
+})
+
+describe('lecturas sin destino de datos', () => {
+  it('cuentan como error en la rama que no llega a datos', () => {
+    const design: Design = {
+      nodes: [node('client'), node('a', 'web'), node('b', 'web'), node('sql'), node('queue'), node('worker')],
+      edges: edges('client>a', 'client>b', 'a>sql', 'b>queue', 'queue>worker', 'worker>sql'),
+    }
+    expect(simulate(design, scenario()).errorRate).toBeCloseTo(0.5)
+  })
+
+  it('los fallos de una caché sin nada detrás también se pierden', () => {
+    const design: Design = {
+      nodes: [node('client'), node('a', 'web'), node('b', 'web'), node('sql'), node('cache')],
+      edges: edges('client>a', 'client>b', 'a>sql', 'b>cache'),
+    }
+    expect(simulate(design, scenario()).errorRate).toBeCloseTo(0.1)
+  })
+
+  it('no cuentan si otro grupo de destinos sí las atiende', () => {
+    const design: Design = {
+      nodes: [node('client'), node('dns'), node('api'), node('sql'), node('queue'), node('worker')],
+      edges: edges('client>dns', 'client>api', 'api>sql', 'api>queue', 'queue>worker'),
+    }
+    expect(simulate(design, scenario()).errorRate).toBe(0)
+  })
+
+  it('sin lecturas no hay nada que perder', () => {
+    const design: Design = {
+      nodes: [node('client'), node('a', 'web'), node('b', 'web'), node('sql')],
+      edges: edges('client>a', 'client>b', 'a>sql'),
+    }
+    expect(simulate(design, scenario({ readRps: 0, writeRps: 10 })).errorRate).toBe(0)
+  })
+})
+
+describe('carga duplicada', () => {
+  it('un destino tras una caché en cadena no recibe además la carga directa', () => {
+    const design: Design = {
+      nodes: [node('client'), node('api'), node('cache'), node('sql')],
+      edges: edges('client>api', 'api>cache', 'cache>sql', 'api>sql'),
+    }
+    const { nodes, p99Ms } = simulate(design, scenario({ writeRps: 10 }))
+    expect(nodes.sql.readRps).toBeCloseTo(20)
+    expect(nodes.sql.writeRps).toBe(10)
+    expect(p99Ms).toBeCloseTo(nodes.api.latencyMs + nodes.cache.latencyMs + nodes.sql.latencyMs)
+  })
+
+  it('un destino tras un CDN no recibe además la carga directa', () => {
+    const design: Design = {
+      nodes: [node('client'), node('cdn'), node('api'), node('sql')],
+      edges: edges('client>cdn', 'client>api', 'cdn>api', 'api>sql'),
+    }
+    expect(simulate(design, scenario()).nodes.api.readRps).toBeCloseTo(20)
+  })
+
+  it('una cola alivia las escrituras y no las suma a las directas', () => {
+    const design: Design = {
+      nodes: [node('client'), node('api'), node('queue'), node('worker'), node('sql')],
+      edges: edges('client>api', 'api>sql', 'api>queue', 'queue>worker', 'worker>sql'),
+    }
+    const { nodes } = simulate(design, scenario({ writeRps: 120, meanWriteRps: 40 }))
+    expect(nodes.sql.writeRps).toBe(40)
+    expect(nodes.sql.readRps).toBe(100)
+  })
+})
+
 describe('caídas', () => {
-  const twoApis: Design = { ...basic, nodes: [node('client'), node('api', 'api', 2), node('sql')] }
+  const twoApis: Design = {
+    nodes: [node('client'), node('lb'), node('api', 'api', 2), node('sql')],
+    edges: edges('client>lb', 'lb>api', 'api>sql'),
+  }
 
   it('quita una instancia si hay varias', () => {
     const result = simulate(twoApis, scenario({ down: 'api' }))
@@ -299,12 +407,64 @@ describe('caídas', () => {
 
   it('pasa la carga al otro nodo del grupo', () => {
     const design: Design = {
-      nodes: [node('client'), node('a', 'web'), node('b', 'web'), node('sql')],
-      edges: edges('client>a', 'client>b', 'a>sql', 'b>sql'),
+      nodes: [node('client'), node('lb'), node('a', 'web'), node('b', 'web'), node('sql')],
+      edges: edges('client>lb', 'lb>a', 'lb>b', 'a>sql', 'b>sql'),
     }
     const result = simulate(design, scenario({ down: 'a' }))
     expect(result.nodes.b.readRps).toBe(100)
     expect(result.errorRate).toBe(0)
+  })
+
+  describe('sin balanceador delante', () => {
+    it('se pierde la parte de la instancia caída', () => {
+      const design: Design = {
+        nodes: [node('client'), node('api', 'api', 4), node('sql')],
+        edges: edges('client>api', 'api>sql'),
+      }
+      expect(simulate(design, scenario({ down: 'api' })).errorRate).toBeCloseTo(0.25)
+    })
+
+    it('se pierde la parte del nodo caído', () => {
+      const design: Design = {
+        nodes: [node('client'), node('a', 'web'), node('b', 'web'), node('sql')],
+        edges: edges('client>a', 'client>b', 'a>sql', 'b>sql'),
+      }
+      expect(simulate(design, scenario({ down: 'a' })).errorRate).toBeCloseTo(0.5)
+    })
+
+    it('lo que sirve un CDN no se pierde', () => {
+      const design: Design = {
+        nodes: [node('client'), node('cdn'), node('web', 'web', 2), node('sql')],
+        edges: edges('client>cdn', 'cdn>web', 'web>sql'),
+      }
+      expect(simulate(design, scenario({ down: 'web' })).errorRate).toBeCloseTo(0.1)
+    })
+
+    it('un servidor web hace de proxy delante de la API', () => {
+      const design: Design = {
+        nodes: [node('client'), node('lb'), node('web', 'web', 2), node('api', 'api', 2), node('sql')],
+        edges: edges('client>lb', 'lb>web', 'web>api', 'api>sql'),
+      }
+      expect(simulate(design, scenario({ down: 'api' })).errorRate).toBe(0)
+      expect(isBalanced(design, 'api')).toBe(true)
+      expect(isBalanced(design, 'web')).toBe(true)
+    })
+
+    it('la API no hace de proxy delante del servidor web', () => {
+      const design: Design = {
+        nodes: [node('client'), node('api'), node('web', 'web', 2), node('sql')],
+        edges: edges('client>api', 'api>web', 'web>sql'),
+      }
+      expect(isBalanced(design, 'web')).toBe(false)
+    })
+
+    it('no afecta a las piezas de datos', () => {
+      const design: Design = {
+        nodes: [node('client'), node('api'), node('sql', 'sql', 2)],
+        edges: edges('client>api', 'api>sql'),
+      }
+      expect(simulate(design, scenario({ down: 'sql' })).errorRate).toBe(0)
+    })
   })
 
   it('sigue hasta el destino si cae una caché en paralelo', () => {
@@ -375,6 +535,14 @@ describe('caídas', () => {
     expect(simulate(design, scenario({ down: 'replica' })).errorRate).toBe(0)
   })
 
+  it('una pieza sin salida no deja a nadie sin servicio al caer', () => {
+    const design: Design = {
+      nodes: [node('client'), node('lb'), node('api'), node('sql')],
+      edges: edges('client>lb', 'client>api', 'api>sql'),
+    }
+    expect(simulate(design, scenario({ down: 'lb' })).errorRate).toBe(0)
+  })
+
   it('sigue pagando y mostrando la pieza caída', () => {
     const result = simulate(basic, scenario({ down: 'api' }))
     expect(result.monthlyCost).toBe(designCost(basic))
@@ -402,6 +570,30 @@ describe('resultado', () => {
   it('identifica el cuello de botella', () => {
     const design: Design = { ...basic, nodes: [node('client'), node('api'), node('sql', 'sql', 100)] }
     expect(simulate(design, scenario({ readRps: 1 })).bottleneckId).toBe('api')
+  })
+
+  it('una pieza en segundo plano no esconde el fallo real', () => {
+    const design: Design = {
+      nodes: [node('client'), node('web'), node('sql'), node('warehouse')],
+      edges: edges('client>web', 'web>sql', 'web>warehouse'),
+    }
+    const result = simulate(design, scenario({ readRps: PIECES.sql.capacityRps * 2 }))
+    expect(result.nodes.warehouse.utilization).toBeGreaterThan(result.nodes.sql.utilization)
+    expect(result.bottleneckId).toBe('sql')
+  })
+
+  it('tolera diamantes encadenados sin crecer exponencialmente', () => {
+    const levels = 40
+    const nodes = [node('client'), node('sql', 'sql', 100)]
+    const pairs: string[] = []
+    let previous = 'client'
+    for (let i = 0; i < levels; i++) {
+      nodes.push(node(`a${i}`, 'dns'), node(`b${i}`, 'dns'), node(`c${i}`, 'lb'))
+      pairs.push(`${previous}>a${i}`, `${previous}>b${i}`, `a${i}>c${i}`, `b${i}>c${i}`)
+      previous = `c${i}`
+    }
+    pairs.push(`${previous}>sql`)
+    expect(simulate({ nodes, edges: edges(...pairs) }, scenario({ readRps: 1 })).errorRate).toBe(0)
   })
 
   it('no señala cuello de botella sin carga', () => {
