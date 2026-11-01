@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pastebin } from '../missions/pastebin'
-import { VALID_DECISIONS, removeNode, withNosql, withoutPopularReads } from '../missions/pastebin.fixtures'
+import { VALID_DECISIONS, removeNode, withNosql, withVisitCounter, withoutPopularReads } from '../missions/pastebin.fixtures'
 import { compareDesign, type AttemptFacts } from './score'
 
 const variant = pastebin.variants[0]
@@ -62,6 +62,12 @@ describe('compareDesign', () => {
   it('no depende de los identificadores de nodo', () => {
     const renamed = removeNode(reference, 'cache')
     expect(compare(renamed).map((d) => d.id)).toEqual(['rol:populares'])
+  })
+
+  it('una regla funcional fallida da pieza con la nota de la regla', () => {
+    expect(compare(withVisitCounter(reference))).toEqual([
+      expect.objectContaining({ id: 'regla:estadisticas', category: 'pieza', noteUrl: expect.any(String) }),
+    ])
   })
 
   it('los id son estables entre ejecuciones', () => {

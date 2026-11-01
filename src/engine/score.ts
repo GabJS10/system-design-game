@@ -146,5 +146,15 @@ export function compareDesign(
     })
   }
 
+  for (const rule of mission.rules.filter((r) => !r.check(design, decisions))) {
+    diffs.push({
+      id: `regla:${rule.id}`,
+      category: 'pieza',
+      title: rule.label,
+      detail: 'Tu diseño no cumple esta regla, y por eso pierdes fiabilidad.',
+      noteUrl: rule.noteUrl,
+    })
+  }
+
   return diffs
 }
