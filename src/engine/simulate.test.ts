@@ -162,7 +162,7 @@ describe('trabajo en segundo plano', () => {
     const readRps = PIECES.batch.capacityRps * 3
     const big: Design = {
       ...design,
-      nodes: design.nodes.map((n) => (n.kind === 'api' || n.kind === 'sql' ? { ...n, instances: 100 } : n)),
+      nodes: design.nodes.map((n) => (n.kind === 'batch' ? n : { ...n, instances: 100 })),
     }
     const result = simulate(big, scenario({ readRps }))
     expect(result.nodes.batch.saturated).toBe(true)
