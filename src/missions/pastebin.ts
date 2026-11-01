@@ -360,11 +360,38 @@ export const pastebin: Mission = {
     {
       key: 'simulacion:*:*',
       texts: [
-        '¿Qué escenario falla primero y qué pieza llega antes al límite?',
+        '¿Tu diseño lleva cada petición desde los usuarios hasta un dato guardado?',
         'Revisa que el diseño conecte al cliente con un almacenamiento y que no queden piezas sueltas.',
         'Sigue el camino de una petición desde el cliente hasta el dato y comprueba cada salto.',
       ],
       lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:medio:*',
+      texts: [
+        '¿Qué pieza llega antes al límite con el tráfico de un día normal?',
+        'El diseño no aguanta ni el tráfico medio, así que falla antes de que llegue ningún pico.',
+        'Compara la carga que recibe cada pieza con lo que aguanta y sigue el camino de las peticiones que fallan.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:pico:*',
+      texts: [
+        '¿Qué pieza llega antes al límite cuando el tráfico se multiplica?',
+        'El tráfico medio pasa, pero una pieza no tiene margen para el pico.',
+        'Necesitas más capacidad en la pieza que se satura, o que le llegue menos trabajo.',
+      ],
+      lessonId: 'latency',
+    },
+    {
+      key: 'simulacion:viral:*',
+      texts: [
+        '¿Qué pieza sufre cuando casi todas las peticiones piden lo mismo?',
+        'Un solo paste concentra el tráfico, y repartir la carga por igual no ayuda con una clave tan popular.',
+        'Necesitas que las peticiones repetidas se resuelvan antes de llegar a la pieza saturada.',
+      ],
+      lessonId: 'cache',
     },
     {
       key: 'simulacion:pico:sql',
@@ -409,7 +436,6 @@ export const pastebin: Mission = {
         'Hay piezas que, si se caen, dejan sin servicio a todos los usuarios.',
         'Necesitas redundancia en lo que hoy tiene una sola copia, y que el tráfico sepa repartirse entre las copias.',
       ],
-      lessonId: 'latency',
     },
     {
       key: 'simulacion:caida:sql',
@@ -418,7 +444,6 @@ export const pastebin: Mission = {
         'Toda la información de los pastes depende de una sola copia.',
         'Necesitas que los datos existan en más de un sitio, de modo que el servicio siga si falla uno.',
       ],
-      lessonId: 'latency',
     },
     {
       key: 'simulacion:caida:web',
@@ -427,7 +452,6 @@ export const pastebin: Mission = {
         'Hay un único servidor de aplicación y, sin él, nadie llega a los datos.',
         'Necesitas varias copias del servidor y algo que reparta el tráfico entre ellas.',
       ],
-      lessonId: 'latency',
     },
     {
       key: 'simulacion:*:separar',
@@ -446,6 +470,14 @@ export const pastebin: Mission = {
       ],
     },
     {
+      key: 'simulacion:*:decisiones',
+      texts: [
+        '¿Cada respuesta que diste aguanta el volumen y los requisitos de la misión?',
+        'Alguna de tus decisiones no funciona para este problema, aunque el diseño esté bien.',
+        'Repasa cada decisión con tus estimaciones y cambia la que no resista las cuentas.',
+      ],
+    },
+    {
       key: 'simulacion:*:estadisticas',
       texts: [
         '¿Hace falta contar cada visita en el mismo momento en que ocurre?',
@@ -458,7 +490,7 @@ export const pastebin: Mission = {
       texts: [
         '¿Quién borra un paste cuando llega su fecha de caducidad?',
         'Nadie recorre los metadatos para eliminar lo caducado.',
-        'Necesitas un proceso en segundo plano que revise periódicamente los metadatos y borre lo que caducó.',
+        'Necesitas que algo revise cada cierto tiempo los metadatos y borre lo que caducó, sin depender de las peticiones de los usuarios.',
       ],
     },
     {
@@ -468,7 +500,6 @@ export const pastebin: Mission = {
         'Tienes varias copias de los servidores, pero nada reparte el tráfico entre ellas.',
         'Necesitas un mecanismo que decida a qué servidor va cada petición.',
       ],
-      lessonId: 'latency',
     },
     {
       key: 'simulacion:*:coste',
@@ -507,7 +538,7 @@ export const pastebin: Mission = {
       texts: [
         '¿Qué tipo de dato es el contenido de un paste y qué almacén está pensado para guardarlo?',
         'Mezclar el contenido con los metadatos o montar servidores propios complica el crecimiento.',
-        'Elige un almacén gestionado que escale solo con el tamaño del contenido.',
+        'Elige un sitio pensado para datos grandes que crecen sin parar, y comprueba que no te obligue a mezclarlos con los metadatos.',
       ],
     },
   ],

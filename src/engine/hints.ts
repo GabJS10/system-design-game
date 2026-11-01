@@ -1,6 +1,6 @@
 import type { StarResult } from './score'
 import { isBalanced } from './simulate'
-import type { Design, SimResult } from './types'
+import type { Design, PieceKind, SimResult } from './types'
 
 export type HintLevel = 1 | 2 | 3
 export type FailureKey = string // `${fase}:${escenario|'*'}:${tipoDePieza|regla|'*'}`
@@ -11,6 +11,9 @@ export type ActivityEvent = { type: 'visible' | 'hidden' | 'change'; at: number 
 
 const STUCK_MS = 180_000
 const STUCK_COUNT = 3
+// Piezas distintas con el mismo problema comparten pista.
+const FAMILY: Partial<Record<PieceKind, string>> = { api: 'web', nosql: 'sql', replica: 'sql' }
+const familyOf = (kind: PieceKind) => FAMILY[kind] ?? kind
 
 /** Milisegundos con la pestaña visible desde el último 'change'. */
 export function activeTimer(unsorted: ActivityEvent[], now: number): number {
@@ -47,24 +50,24 @@ export function diagnose(design: Design, stars: StarResult, results: SimResult[]
     const kind = design.nodes.find((n) => n.id === result?.bottleneckId)?.kind
     const metrics = result?.bottleneckId ? result.nodes[result.bottleneckId] : undefined
     if (!kind || !metrics) return `simulacion:${scenarioId}:*`
-    return `simulacion:${scenarioId}:${kind}${metrics.writeRps > metrics.readRps ? '-escrituras' : ''}`
+    return `simulacion:${scenarioId}:${familyOf(kind)}${metrics.writeRps > metrics.readRps ? '-escrituras' : ''}`
   }
 
   const down = design.nodes.find((n) => stars.failingDownIds.includes(n.id))
   if (down) {
     const copies = design.nodes.filter((n) => n.kind === down.kind).reduce((total, n) => total + n.instances, 0)
     if ((down.kind === 'web' || down.kind === 'api') && copies > 1 && !isBalanced(design, down.id)) return 'simulacion:caida:balanceo'
-    return `simulacion:caida:${down.kind}`
+    return `simulacion:caida:${familyOf(down.kind)}`
   }
   // Sin causa concreta (por ejemplo un diseño inválido), no se acusa al coste.
   if (!stars.performance || !stars.reliability) return 'simulacion:*:*'
   return stars.cost ? 'ok:*:*' : 'simulacion:*:coste'
 }
 
-/** Clave exacta primero y luego comodines, del más al menos específico. */
+/** Clave exacta primero y luego comodines; el tipo de pieza dice más que el escenario. */
 export function selectHint(hints: HintSet[], key: FailureKey): HintSet | null {
   const [phase, scenario, type] = key.split(':')
-  const candidates = [key, `${phase}:${scenario}:*`, `${phase}:*:${type}`, `${phase}:*:*`]
+  const candidates = [key, `${phase}:*:${type}`, `${phase}:${scenario}:*`, `${phase}:*:*`]
   for (const candidate of candidates) {
     const found = hints.find((h) => h.key === candidate)
     if (found) return found

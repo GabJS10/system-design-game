@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MAP_NODES } from '../content'
+import { PALETTE } from '../engine/components'
 import { diagnose, selectHint } from '../engine/hints'
 import { scenariosFor, type Variant } from '../engine/mission'
 import { scoreDesign } from '../engine/score'
@@ -25,6 +26,7 @@ const diagnoseFor = (variant: Variant, design: Design, decisions = VALID_DECISIO
 const FORBIDDEN = [
   'cache', 'cdn', 'redis', 'memcached', 'replica', 'balanceador', 'load balancer', 'worker', 'nosql',
   'md5', 'base62', 'almacenamiento de objetos', 'por lotes', 'reparto de trafico', 'copia viva', 'delante',
+  'segundo plano', 'gestionado',
 ]
 const plain = (text: string) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
@@ -51,6 +53,38 @@ describe('pistas de Pastebin', () => {
     }
   })
 
+  it('ninguna pista de caídas enlaza a una lección que no explica fallos', () => {
+    for (const hint of pastebin.hints.filter((h) => h.key.startsWith('simulacion:caida:'))) {
+      expect(hint.lessonId, hint.key).toBeUndefined()
+    }
+  })
+
+  const CAUSES = PALETTE.map((kind) => ({ api: 'web', nosql: 'sql', replica: 'sql' } as Record<string, string>)[kind] ?? kind)
+
+  it.each(['medio', 'pico', 'viral', 'caida'])('un fallo en %s no cae en el texto de piezas sueltas', (scenario) => {
+    for (const cause of CAUSES) {
+      const key = `simulacion:${scenario}:${cause}`
+      expect(selectHint(pastebin.hints, key)?.key, key).not.toBe('simulacion:*:*')
+    }
+  })
+
+  it('el texto de piezas sueltas solo sale con un diseño inválido', () => {
+    const generic = pastebin.hints.find((h) => h.key === 'simulacion:*:*')
+    expect(plain(generic?.texts.join(' ') ?? '')).toContain('piezas sueltas')
+    const invalid: Design = { nodes: [{ id: 'client', kind: 'client', instances: 1 }], edges: [] }
+    const stars = scoreDesign(pastebin, pastebin.variants[0], invalid, VALID_DECISIONS)
+    expect(diagnose(invalid, stars, [])).toBe('simulacion:*:*')
+    for (const hint of pastebin.hints.filter((h) => h !== generic)) {
+      expect(plain(hint.texts.join(' ')), hint.key).not.toContain('piezas sueltas')
+    }
+  })
+
+  it('cada regla tiene su pista', () => {
+    for (const rule of pastebin.rules) {
+      expect(selectHint(pastebin.hints, `simulacion:*:${rule.id}`)?.key).toBe(`simulacion:*:${rule.id}`)
+    }
+  })
+
   it('el nivel 1 pregunta y no afirma', () => {
     for (const hint of pastebin.hints) expect(hint.texts[0], hint.key).toMatch(/\?$/)
   })
@@ -74,6 +108,7 @@ describe.each(pastebin.variants)('diagnóstico en la variante $id', (variant) =>
     ['sin lote de estadísticas', removeNode(reference, 'batch'), undefined],
     ['sin almacén de contenido', removeNode(reference, 'objectStore'), undefined],
     ['sin método de enlaces', reference, {}],
+    ['decisión que no funciona', reference, { ...VALID_DECISIONS, longitud: '4' }],
   ]
 
   it.each(cases)('%s obtiene una pista específica, no el comodín', (_, design, decisions) => {
@@ -133,14 +168,13 @@ describe('claves concretas', () => {
 
 describe('variante lecturas', () => {
   const lecturas = pastebin.variants[1]
-  const text = (design: Design) => {
-    const hint = selectHint(pastebin.hints, diagnoseFor(lecturas, design))
-    return plain(hint?.texts.join(' ') ?? '')
-  }
 
-  it('ninguna pista sugiere que una sola pieza lo resuelve', () => {
-    for (const design of [SINGLE_MACHINE, withoutPopularReads(lecturas.reference), removeNode(lecturas.reference, 'cdn')]) {
-      expect(text(design)).not.toMatch(/\b(una sola|basta con|solo hace falta|con una)\b/)
-    }
+  it.each(['cache', 'cdn'])('sin %s el paste viral sigue señalando las lecturas repetidas', (id) => {
+    const key = diagnoseFor(lecturas, removeNode(lecturas.reference, id))
+    const hint = selectHint(pastebin.hints, key)
+    expect(key).toBe(id === 'cache' ? 'simulacion:viral:sql' : 'simulacion:viral:web')
+    expect(hint?.key).toBe(id === 'cache' ? 'simulacion:viral:sql' : 'simulacion:*:web')
+    expect(hint?.lessonId).toBe('cache')
+    expect(plain(hint?.texts[2] ?? '')).toContain('lecturas')
   })
 })

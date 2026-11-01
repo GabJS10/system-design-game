@@ -80,6 +80,11 @@ describe('selectHint', () => {
     expect(selectHint(hints, 'simulacion:pico:web')?.key).toBe('simulacion:*:*')
   })
 
+  it('el tipo de pieza pesa más que el escenario', () => {
+    expect(selectHint(hints, 'simulacion:viral:sql-escrituras')?.key).toBe('simulacion:viral:*')
+    expect(selectHint([set('simulacion:pico:*'), set('simulacion:*:web')], 'simulacion:pico:web')?.key).toBe('simulacion:*:web')
+  })
+
   it('no mezcla fases y devuelve null si nada encaja', () => {
     expect(selectHint(hints, 'informe:*:*')).toBeNull()
     expect(selectHint([], 'simulacion:*:*')).toBeNull()
@@ -150,6 +155,37 @@ describe('diagnose', () => {
   it('distingue la saturación por escrituras', () => {
     const failing = stars({ performance: false, failingScenarioIds: ['pico'] })
     expect(diagnose(design, failing, [result('pico', 'db', 5, 100)])).toBe('simulacion:pico:sql-escrituras')
+  })
+
+  it.each([
+    ['api', 'web'],
+    ['nosql', 'sql'],
+    ['replica', 'sql'],
+    ['cache', 'cache'],
+  ] as const)('agrupa %s con %s en el cuello de botella', (kind, family) => {
+    const withKind: Design = { ...design, nodes: [...design.nodes, { id: 'x', kind, instances: 1 }] }
+    const failing = stars({ performance: false, failingScenarioIds: ['pico'] })
+    expect(diagnose(withKind, failing, [result('pico', 'x', 100, 5)])).toBe(`simulacion:pico:${family}`)
+  })
+
+  it('agrupa también las escrituras y las caídas', () => {
+    const nosql: Design = { ...design, nodes: design.nodes.map((n) => (n.id === 'db' ? { ...n, kind: 'nosql' } : n)) }
+    const failing = stars({ performance: false, failingScenarioIds: ['pico'] })
+    expect(diagnose(nosql, failing, [result('pico', 'db', 5, 100)])).toBe('simulacion:pico:sql-escrituras')
+    expect(diagnose(nosql, stars({ reliability: false, failingDownIds: ['db'] }), [])).toBe('simulacion:caida:sql')
+  })
+
+  it('varias copias sin nada delante que las reparta tienen su clave', () => {
+    const two: Design = { ...design, nodes: design.nodes.map((n) => (n.kind === 'web' ? { ...n, instances: 2 } : n)) }
+    expect(diagnose(two, stars({ reliability: false, failingDownIds: ['web'] }), [])).toBe('simulacion:caida:balanceo')
+  })
+
+  it('varias copias bien repartidas que no aguantan no son un problema de reparto', () => {
+    const balanced: Design = {
+      nodes: [...design.nodes.map((n) => (n.kind === 'web' ? { ...n, instances: 2 } : n)), { id: 'lb', kind: 'lb', instances: 1 }],
+      edges: [{ from: 'client', to: 'lb' }, { from: 'lb', to: 'web' }, { from: 'web', to: 'db' }],
+    }
+    expect(diagnose(balanced, stars({ reliability: false, failingDownIds: ['web'] }), [])).toBe('simulacion:caida:web')
   })
 
   it('una regla incumplida pesa más que el rendimiento', () => {
