@@ -296,17 +296,17 @@ export function dueReviews(save: Save, now: Date): string[];
 export function pickVariant(save: Save, mission: Mission): Variant; // la menos usada; empate por orden
 ```
 
-- [ ] **Step 1: Escribir las pruebas fallidas,** con un `Storage` falso.
+- [x] **Step 1: Escribir las pruebas fallidas,** con un `Storage` falso.
   - Guardar y cargar conserva un `current` a mitad de intento.
   - JSON corrupto o `version: 99` en `localStorage`: `loadSave` devuelve un save vacío con aviso y conserva el texto original en la clave `sdw-save-backup`.
   - `importSave` con texto inválido devuelve `error`.
   - Una excepción de `setItem` no rompe la aplicación.
   - `dueReviews` con intervalos 3, 7 y 21 y fechas fijas.
   - `pickVariant` rota entre las tres variantes.
-- [ ] **Step 2: Ejecutar `npx vitest run src/save.test.ts`.** Esperado: FAIL.
-- [ ] **Step 3: Implementar `save.ts`.** La validación del JSON se hace a mano, sin dependencias, en la frontera de lectura.
-- [ ] **Step 4: Ejecutar la prueba.** Esperado: PASS.
-- [ ] **Step 5: Commit** `feat: progreso local con exportación e importación`.
+- [x] **Step 2: Ejecutar `npx vitest run src/save.test.ts`.** Esperado: FAIL.
+- [x] **Step 3: Implementar `save.ts`.** La validación del JSON se hace a mano, sin dependencias, en la frontera de lectura.
+- [x] **Step 4: Ejecutar la prueba.** Esperado: PASS.
+- [x] **Step 5: Commit** `feat: progreso local con exportación e importación`.
 
 ### Task 7: Aplicación y mapa
 
