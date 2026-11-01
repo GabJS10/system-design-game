@@ -244,7 +244,23 @@ export const pastebin: Mission = {
     },
     { id: 'reparto', label: 'Reparto de tráfico', referenceKinds: ['lb'], acceptedKinds: ['lb'], noteUrl: EXERCISE_URL },
     { id: 'estadisticas', label: 'Estadísticas', referenceKinds: ['batch'], acceptedKinds: ['batch'], noteUrl: EXERCISE_URL },
-    { id: 'limpieza', label: 'Limpieza de caducados', referenceKinds: ['worker'], acceptedKinds: ['worker'], noteUrl: EXERCISE_URL },
+    {
+      id: 'limpieza',
+      label: 'Limpieza de caducados',
+      referenceKinds: ['worker'],
+      acceptedKinds: CLEANERS,
+      noteUrl: EXERCISE_URL,
+      covers: (design, node) =>
+        design.edges.some((e) => e.from === node.id && METADATA_KINDS.includes(kindOf(design, e.to) as PieceKind)),
+    },
+    {
+      id: 'redundancia',
+      label: 'Redundancia de datos',
+      referenceKinds: ['replica'],
+      acceptedKinds: ['replica', 'sql', 'nosql'],
+      noteUrl: EXERCISE_URL,
+      covers: (_, node) => node.kind === 'replica' || node.instances > 1,
+    },
   ],
   rules: [
     {
@@ -319,6 +335,7 @@ export const pastebin: Mission = {
   latencyTargetMs: 200,
   maxErrorRate: 0.001,
   relatedLessons: ['tema-8', 'tema-12', 'cache', 'tema-17'],
+  failureNoteUrl: EXERCISE_URL,
   growthNote:
     'Para seguir creciendo, mide, encuentra el cuello de botella y resuélvelo. Añade DNS y CDN delante, varios servidores web como proxy inverso tras los balanceadores y una capa de aplicación con APIs de lectura y de escritura. Las lecturas son lo primero que se escala: caché en memoria para los pastes populares y réplicas de lectura para los fallos de caché. Las escrituras las aguanta un maestro SQL con failover; si no bastara, recurre a federación, sharding, desnormalización o NoSQL. El contenido sigue en el almacenamiento de objetos, y las estadísticas pasan de los logs a un trabajo MapReduce que llena un almacén de datos.',
   hints: [

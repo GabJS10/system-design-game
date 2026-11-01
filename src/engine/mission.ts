@@ -1,6 +1,6 @@
 import { PIECES } from './components'
 import type { HintSet } from './hints'
-import type { Design, PieceKind, Scenario } from './types'
+import type { Design, DesignNode, PieceKind, Scenario } from './types'
 
 export type Question = { id: string; text: string; answer: string; useful: boolean }
 export type ScopeItem = { id: string; label: string; inScope: boolean }
@@ -10,6 +10,7 @@ export type Role = {
   referenceKinds: PieceKind[]
   acceptedKinds: PieceKind[]
   noteUrl: string
+  covers?: (design: Design, node: DesignNode) => boolean
 }
 export type Rule = {
   id: string
@@ -47,6 +48,7 @@ export type Mission = {
   latencyTargetMs: number
   maxErrorRate: number
   relatedLessons: string[]
+  failureNoteUrl: string
   growthNote: string
   hints: HintSet[]
 }

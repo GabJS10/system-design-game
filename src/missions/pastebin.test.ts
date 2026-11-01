@@ -319,7 +319,8 @@ describe('contenido de Pastebin', () => {
       populares: ['cache', 'cdn'],
       reparto: ['lb'],
       estadisticas: ['batch'],
-      limpieza: ['worker'],
+      limpieza: ['worker', 'batch'],
+      redundancia: ['replica', 'sql', 'nosql'],
     })
     for (const role of pastebin.roles) expect(role.acceptedKinds).toEqual(expect.arrayContaining(role.referenceKinds))
   })
@@ -338,6 +339,7 @@ describe('contenido de Pastebin', () => {
 
   it('solo enlaza a las notas acordadas', () => {
     const urls = [...pastebin.roles, ...pastebin.rules, ...pastebin.decisions].map((item) => item.noteUrl)
+    expect(NOTE_URLS).toContain(pastebin.failureNoteUrl)
     expect(new Set(urls)).toEqual(new Set(NOTE_URLS))
   })
 })

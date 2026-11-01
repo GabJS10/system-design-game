@@ -47,6 +47,7 @@ const mission = (overrides: Partial<Mission> = {}): Mission => ({
   latencyTargetMs: 200,
   maxErrorRate: 0.001,
   relatedLessons: [],
+  failureNoteUrl: '',
   growthNote: '',
   hints: [],
   ...overrides,
