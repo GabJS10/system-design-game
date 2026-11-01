@@ -225,11 +225,11 @@ export function compareDesign(mission: Mission, variant: Variant, design: Design
 
 Clasificación: alcance mal marcado o pregunta útil sin hacer es `requisito`; estimación `cerca` o `lejos` es `estimacion`; función sin ningún `acceptedKinds` en el diseño es `pieza`; función cubierta con un tipo que no está en `referenceKinds` es `valido`; decisión con opción no válida es `pieza` con la nota asociada.
 
-- [ ] **Step 1: Escribir las pruebas fallidas.** La referencia con `nosql` da una diferencia `valido` y ninguna `pieza`. Sin caché ni CDN da `pieza` con `noteUrl`. Una estimación `lejos` da `estimacion`. Sin preguntar por estadísticas da `requisito`.
-- [ ] **Step 2: Ejecutar `npx vitest run src/engine/compare.test.ts`.** Esperado: FAIL.
-- [ ] **Step 3: Implementar `compareDesign`.** No comparar identificadores de nodos ni aristas: solo funciones, reglas, decisiones y hechos del intento.
-- [ ] **Step 4: Ejecutar la prueba.** Esperado: PASS.
-- [ ] **Step 5: Commit** `feat: clasificación de diferencias`.
+- [x] **Step 1: Escribir las pruebas fallidas.** La referencia con `nosql` da una diferencia `valido` y ninguna `pieza`. Sin caché ni CDN da `pieza` con `noteUrl`. Una estimación `lejos` da `estimacion`. Sin preguntar por estadísticas da `requisito`.
+- [x] **Step 2: Ejecutar `npx vitest run src/engine/compare.test.ts`.** Esperado: FAIL.
+- [x] **Step 3: Implementar `compareDesign`.** No comparar identificadores de nodos ni aristas: solo funciones, reglas, decisiones y hechos del intento.
+- [x] **Step 4: Ejecutar la prueba.** Esperado: PASS.
+- [x] **Step 5: Commit** `feat: clasificación de diferencias`.
 
 ### Task 5: Pistas y repetición
 
@@ -261,12 +261,12 @@ export function nextReviewDays(completedAttempts: number, uses: HintUse[]): 3 | 
 
 `Mission` añade `hints: HintSet[]`. `nextReviewDays`: intervalos 3, 7 y 21 según intentos completados previos (el 21 se mantiene); con pistas de nivel 2 o 3, baja un escalón, sin bajar de 3.
 
-- [ ] **Step 1: Escribir las pruebas fallidas de `hints.ts` y `review.ts`.** Cubrir cada umbral justo por debajo y en su valor, `starCap`, y los intervalos: `nextReviewDays(0, [])` es 3, `(1, [])` es 7, `(2, [])` es 21, `(5, [])` es 21, y `(2, [{ level: 3 }])` es 7. Añadir: con `activeTimer`, una pestaña oculta durante 10 minutos no suma ese tiempo.
-- [ ] **Step 2: Escribir las pruebas fallidas en `pastebin.hints.test.ts`.** Cada diseño fallido de Task 3 obtiene una pista específica, no el comodín. Ninguna de las pistas contiene los nombres `caché`, `cache`, `CDN`, `Redis`, `réplica` ni números de los valores finales, comprobado sobre todos los textos.
-- [ ] **Step 3: Ejecutar `npx vitest run src/engine/hints.test.ts src/engine/review.test.ts src/missions/pastebin.hints.test.ts`.** Esperado: FAIL.
-- [ ] **Step 4: Implementar y escribir las pistas de Pastebin.** Fases `informe`, `estimacion`, `simulacion` y `decisiones`, con al menos pico saturado por lecturas, viral, escrituras, caída de un punto único, cada regla y coste excedido. Niveles según los ejemplos del spec.
-- [ ] **Step 5: Ejecutar `npx vitest run`.** Esperado: PASS.
-- [ ] **Step 6: Commit** `feat: pistas graduadas y calendario de repetición`.
+- [x] **Step 1: Escribir las pruebas fallidas de `hints.ts` y `review.ts`.** Cubrir cada umbral justo por debajo y en su valor, `starCap`, y los intervalos: `nextReviewDays(0, [])` es 3, `(1, [])` es 7, `(2, [])` es 21, `(5, [])` es 21, y `(2, [{ level: 3 }])` es 7. Añadir: con `activeTimer`, una pestaña oculta durante 10 minutos no suma ese tiempo.
+- [x] **Step 2: Escribir las pruebas fallidas en `pastebin.hints.test.ts`.** Cada diseño fallido de Task 3 obtiene una pista específica, no el comodín. Ninguna de las pistas contiene los nombres `caché`, `cache`, `CDN`, `Redis`, `réplica` ni números de los valores finales, comprobado sobre todos los textos.
+- [x] **Step 3: Ejecutar `npx vitest run src/engine/hints.test.ts src/engine/review.test.ts src/missions/pastebin.hints.test.ts`.** Esperado: FAIL.
+- [x] **Step 4: Implementar y escribir las pistas de Pastebin.** Fases `informe`, `estimacion`, `simulacion` y `decisiones`, con al menos pico saturado por lecturas, viral, escrituras, caída de un punto único, cada regla y coste excedido. Niveles según los ejemplos del spec.
+- [x] **Step 5: Ejecutar `npx vitest run`.** Esperado: PASS.
+- [x] **Step 6: Commit** `feat: pistas graduadas y calendario de repetición`.
 
 ### Task 6: Progreso guardado
 
